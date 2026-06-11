@@ -1,0 +1,23 @@
+{
+  "suite": "shipcheck-core",
+  "version": "0.1.0",
+  "description": "Baseline evaluation checks for ShipCheck command behavior.",
+  "cases": [
+    {
+      "id": "scan-markdown",
+      "type": "command_succeeds",
+      "command": "kujo run shipcheck.kujo -- scan"
+    },
+    {
+      "id": "scan-json",
+      "type": "command_succeeds",
+      "command": "kujo run shipcheck.kujo -- scan --format json"
+    },
+    {
+      "id": "help-usage",
+      "type": "command_output_contains",
+      "command": "kujo run shipcheck.kujo -- help",
+      "expected": "Usage"
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+# ShipCheck — release-readiness scanner for Kujo ecosystem projects.
+#
+# Usage:
+#   kujo run shipcheck.kujo scan [--dir <path>] [--format markdown|json]
+#   kujo run shipcheck.kujo checklist [--dir <path>]
+#   kujo run shipcheck.kujo gate [--dir <path>] [--format markdown|json]
+#   kujo run shipcheck.kujo release-note [--dir <path>]
+#   kujo run shipcheck.kujo version
+#   kujo run shipcheck.kujo help
+
+VERSION := "0.1.0"
+
+func print_help() {
+	print("ShipCheck v" + VERSION)
+	print("")
+	print("A local developer tool that inspects a repository and produces")
+	print("a release-readiness report.")
+	print("")
+	print("Usage:")
+	print("  kujo run shipcheck.kujo scan [--dir <path>] [--format markdown|json]")
+	print("  kujo run shipcheck.kujo checklist [--dir <path>]")
+	print("  kujo run shipcheck.kujo gate [--dir <path>] [--format markdown|json]")
+	print("  kujo run shipcheck.kujo release-note [--dir <path>]")
+	print("  kujo run shipcheck.kujo version")
+	print("  kujo run shipcheck.kujo help")
+	print("")
+	print("Commands:")
+	print("  scan          Scan a repo and produce a release-readiness report")
+	print("  checklist     Generate a release checklist")
+	print("  gate          Run release gate checks (exits non-zero on failure)")
+	print("  release-note  Draft release notes from recent commits")
+	print("  version       Print version information")
+	print("  help          Print this help message")
+	print("")
+	print("Options:")
+	print("  --dir         Target directory (default: current directory)")
+	print("  --format      Output format: markdown (default) or json")
+	print("")
+	print("Examples:")
+	print("  kujo run shipcheck.kujo scan")
+	print("  kujo run shipcheck.kujo scan --dir ../my-project --format json")
+	print("  kujo run shipcheck.kujo checklist")
+	print("  kujo run shipcheck.kujo gate")
+}
+
+func print_version() {
+	print("ShipCheck v" + VERSION)
+	print("A Kujo ecosystem dogfood showcase tool.")
+	print("Release-readiness scanner for local repositories.")
+}
+
+# --- CLI Helpers (inlined to minimize module dependencies) ---
+
+func parse_subcommand(argv) {
+	if len(argv) < 1 {
+		return ""
+	}
+	first := argv[0]
+	# Reject flags-as-subcommand
+	if starts_with(first, "-") == 1 {
+		return ""
+	}
+	return first
+}
+
+func flag_value(argv, flag, default_val) {
+	mut i := 0
+	while i < len(argv) {
+		if argv[i] == flag {
+			if i + 1 < len(argv) {
+				next := argv[i + 1]
+				if starts_with(next, "-") == 1 {
+					return "true"
+				}
+				return next
+			}
+			return "true"
+		}
+		i = i + 1
+	}
+	return default_val
+}
+
+func target_dir(argv) {
+	d := flag_value(argv, "--dir", ".")
+	return d
+}
+
+# --- Main ---
+
+func main() {
+	argv := args()
+	subcommand := parse_subcommand(argv)
+
+	if subcommand == "" || subcommand == "help" {
+		print_help()
+		exit(0)
+	}
+
+	if subcommand == "version" {
+		print_version()
+		exit(0)
+	}
+
+	dir := target_dir(argv)
+
+	# Validate target directory
+	fe := file_exists(dir)
+	if fe == false && path_is_dir(dir) == false {
+		print("Error: Directory not found: " + dir)
+		exit(1)
+	}
+
+	if subcommand == "scan" {
+		format := flag_value(argv, "--format", "markdown")
+		lower_format := to_lower(format)
+		from src.scan import run_scan
+		from src.report import report_markdown, report_json
+		results := run_scan(dir)
+		if lower_format == "json" {
+			report_json(results)
+		} else {
+			report_markdown(results)
+		}
+		exit(0)
+	}
+
+	if subcommand == "checklist" {
+		from src.scan import run_scan
+		from src.report import generate_checklist
+		results := run_scan(dir)
+		generate_checklist(results)
+		exit(0)
+	}
+
+	if subcommand == "gate" {
+		format := flag_value(argv, "--format", "markdown")
+		lower_format := to_lower(format)
+		from src.scan import run_scan
+		from src.report import report_markdown, report_json, gate_passed
+		results := run_scan(dir)
+		if lower_format == "json" {
+			report_json(results)
+		} else {
+			report_markdown(results)
+		}
+		if gate_passed(results) == false {
+			print("")
+			print("Gate FAILED: Not all required checks passed.")
+			exit(1)
+		}
+		print("")
+		print("Gate PASSED: All required checks passed.")
+		exit(0)
+	}
+
+	if subcommand == "release-note" {
+		from src.scan import run_scan
+		from src.checks import detect_version
+		from src.report import generate_release_note
+		results := run_scan(dir)
+		ver := detect_version(dir)
+		generate_release_note(results, ver)
+		exit(0)
+	}
+
+	print("Error: Unknown subcommand: " + subcommand)
+	print("Run 'kujo run shipcheck.kujo help' for usage.")
+	exit(2)
+}
+
+main()

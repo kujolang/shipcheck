@@ -1,0 +1,34 @@
+[package]
+name = "shipcheck"
+version = "0.1.0"
+description = "Release-readiness scanner for Kujo ecosystem projects. Inspects a repository and produces structured reports, checklists, and release gate validation."
+license = "MIT"
+authors = ["Kujolang <me@kujolang.ai>"]
+repository = "https://github.com/kujolang/shipcheck"
+keywords = ["kujo", "release", "readiness", "checklist", "devtools"]
+categories = ["developer-tools"]
+readme = "README.md"
+
+[package.status]
+stage = "experimental"
+stability = "early"
+public_api = false
+notes = "Production-forward alpha with stable scan/gate workflows for local and CI usage."
+
+[kujo]
+minimum_version = "0.1.0"
+entry = "shipcheck.kujo"
+sources = ["."]
+includes = ["README.md"]
+excludes = [".git", ".dogfood", "dist", "build", "node_modules"]
+
+[scripts]
+test = "kujo run shipcheck.kujo scan"
+smoke = "kujo run shipcheck.kujo scan --format json"
+
+[dependencies]
+
+[trust]
+checksum = ""
+signature = ""
+signing_key = ""

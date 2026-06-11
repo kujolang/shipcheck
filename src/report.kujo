@@ -1,0 +1,289 @@
+# src/report.kujo — Report generation for ShipCheck results.
+#
+# Produces Markdown reports, JSON reports, release checklists, and release note drafts.
+# IMPORTANT: Dicts/maps use ["key"] access; structs (like ProcessResult) use .field access.
+
+export func report_markdown(results) {
+	dir := results["dir"]
+	project_type := results["project_type"]
+	checks := results["checks"]
+
+	print("# ShipCheck Release-Readiness Report")
+	print("")
+	print("**Directory:** " + dir)
+	print("**Project type:** " + project_type)
+	print("")
+
+	passed := count_passed(checks)
+	failed := count_failed(checks, "error")
+	warnings := count_failed(checks, "warning")
+	total := len(checks)
+
+	print("## Summary")
+	print("")
+	print("| Metric | Count |")
+	print("|--------|-------|")
+	print("| Total checks | " + to_string(total) + " |")
+	print("| Passed | " + to_string(passed) + " |")
+	print("| Failed (errors) | " + to_string(failed) + " |")
+	print("| Warnings | " + to_string(warnings) + " |")
+
+	if failed == 0 && warnings == 0 {
+		print("| **Gate** | **PASSED** |")
+	} else {
+		if failed > 0 {
+			print("| **Gate** | **FAILED** |")
+		} else {
+			print("| **Gate** | **PASSED (warnings)** |")
+		}
+	}
+	print("")
+
+	print("## Repository Health")
+	print("")
+	print_checks(checks, ["git-repo", "readme", "license", "ignore-files"])
+
+	print("## Code Quality")
+	print("")
+	print_checks(checks, ["tests-exist", "lint-command", "format-command", "ci-config"])
+
+	print("## Documentation")
+	print("")
+	print_checks(checks, ["readme-install", "readme-usage", "examples", "docs"])
+
+	print("## Release Metadata")
+	print("")
+	print_checks(checks, ["version-metadata", "changelog", "kennel-manifest", "entry-point"])
+}
+
+export func report_json(results) {
+	checks := results["checks"]
+	passed := count_passed(checks)
+	failed := count_failed(checks, "error")
+	warnings := count_failed(checks, "warning")
+	total := len(checks)
+
+	gate_ok := 1
+	if failed > 0 {
+		gate_ok = 0
+	}
+
+	json_checks := []
+	mut i := 0
+	while i < len(checks) {
+		c := checks[i]
+		entry := {
+			"name": c["name"],
+			"passed": c["passed"],
+			"severity": c["severity"],
+			"message": c["message"],
+			"detail": c["detail"]
+		}
+		json_checks = push(json_checks, entry)
+		i = i + 1
+	}
+
+	output := {
+		"tool": results["tool"],
+		"version": results["version"],
+		"dir": results["dir"],
+		"project_type": results["project_type"],
+		"summary": {
+			"total_checks": total,
+			"passed": passed,
+			"failed_errors": failed,
+			"warnings": warnings,
+			"gate_passed": gate_ok
+		},
+		"checks": json_checks
+	}
+
+	print(to_json_pretty(output))
+}
+
+export func generate_checklist(results) {
+	checks := results["checks"]
+	dir := results["dir"]
+
+	print("# Release Checklist")
+	print("")
+	print("**Repository:** " + dir)
+	print("")
+
+	print("## Pre-Release Checks")
+	print("")
+	print("- [ ] All tests pass")
+	print("- [ ] Linting passes")
+	print("- [ ] Formatting is consistent")
+	print("- [ ] CI is green on main branch")
+	print("")
+
+	print("## Documentation")
+	print("")
+	print("- [ ] README is up to date with install instructions")
+	print("- [ ] README has usage examples")
+	print("- [ ] Examples directory has current examples")
+	print("- [ ] API docs are regenerated (if applicable)")
+	print("- [ ] CHANGELOG.md is updated with this version's changes")
+	print("")
+
+	print("## Version & Metadata")
+	print("")
+	print("- [ ] Version bumped in kennel.toml (or equivalent)")
+	print("- [ ] Version tag created: `git tag v<VERSION>`")
+	print("- [ ] Package manifest fields are correct (name, description, license)")
+	print("- [ ] Entry point is correct and tested")
+	print("")
+
+	print("## Release Artifacts")
+	print("")
+	print("- [ ] Build succeeds from clean checkout")
+	print("- [ ] Release artifacts generated (binary, archive, etc.)")
+	print("- [ ] Release notes drafted")
+	print("- [ ] Release published (GitHub Release, registry, etc.)")
+	print("")
+
+	print("## Post-Release")
+	print("")
+	print("- [ ] Release tagged and pushed: `git push --tags`")
+	print("- [ ] Announcement posted (if applicable)")
+	print("- [ ] Downstream dependencies tested")
+	print("")
+
+	print("## Current State (from ShipCheck scan)")
+	print("")
+	mut i := 0
+	while i < len(checks) {
+		c := checks[i]
+		icon := "[PASS]"
+		if c["passed"] == 0 {
+			if c["severity"] == "error" {
+				icon = "[FAIL]"
+			} else {
+				icon = "[WARN]"
+			}
+		}
+		print(icon + " " + c["message"])
+		i = i + 1
+	}
+}
+
+export func generate_release_note(results, version) {
+	dir := results["dir"]
+
+	print("# Release Notes — v" + version)
+	print("")
+	print("**Repository:** " + dir)
+	print("")
+
+	result := execute_status("git -C " + dir + " log --oneline -20 2>/dev/null")
+	if result.exitcode == 0 && result.stdout != "" {
+		print("## Recent Commits")
+		print("")
+		print("```")
+		print(trim(result.stdout))
+		print("```")
+		print("")
+	}
+
+	print("## Changes")
+	print("")
+	print("<!-- Describe the key changes in this release -->")
+	print("")
+	print("### Added")
+	print("- ")
+	print("")
+	print("### Changed")
+	print("- ")
+	print("")
+	print("### Fixed")
+	print("- ")
+	print("")
+	print("### Deprecated")
+	print("- ")
+	print("")
+	print("### Removed")
+	print("- ")
+	print("")
+	print("### Security")
+	print("- ")
+	print("")
+	print("## Installation")
+	print("")
+	print("```bash")
+	print("# Add installation instructions here")
+	print("```")
+}
+
+export func gate_passed(results) {
+	checks := results["checks"]
+	mut i := 0
+	while i < len(checks) {
+		c := checks[i]
+		if c["passed"] == 0 && c["severity"] == "error" {
+			return false
+		}
+		i = i + 1
+	}
+	return true
+}
+
+func count_passed(checks) {
+	mut count := 0
+	mut i := 0
+	while i < len(checks) {
+		if checks[i]["passed"] == 1 {
+			count = count + 1
+		}
+		i = i + 1
+	}
+	return count
+}
+
+func count_failed(checks, severity) {
+	mut count := 0
+	mut i := 0
+	while i < len(checks) {
+		c := checks[i]
+		if c["passed"] == 0 && c["severity"] == severity {
+			count = count + 1
+		}
+		i = i + 1
+	}
+	return count
+}
+
+func print_checks(all_checks, names) {
+	mut i := 0
+	while i < len(names) {
+		name := names[i]
+		c := find_check(all_checks, name)
+		if c["passed"] == 1 {
+			print("- [PASS] " + c["message"])
+		} else {
+			if c["severity"] == "error" {
+				print("- [FAIL] " + c["message"])
+			} else {
+				print("- [WARN] " + c["message"])
+			}
+		}
+		i = i + 1
+	}
+}
+
+func find_check(all_checks, name) {
+	mut i := 0
+	while i < len(all_checks) {
+		if all_checks[i]["name"] == name {
+			return all_checks[i]
+		}
+		i = i + 1
+	}
+	return {
+		"name": name,
+		"passed": 0,
+		"severity": "error",
+		"message": "Check not found: " + name,
+		"detail": ""
+	}
+}

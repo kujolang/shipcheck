@@ -1,0 +1,445 @@
+# src/checks.kujo — Individual release-readiness check functions.
+#
+# Each check returns a dict with:
+#   name: check name
+#   passed: bool (1 = pass, 0 = fail)
+#   severity: "error" | "warning" | "info"
+#   message: human-readable result
+#   detail: optional extra info
+
+# --- Helpers ---
+
+func make_result(name, passed, severity, message, detail) {
+	return {
+		"name": name,
+		"passed": passed,
+		"severity": severity,
+		"message": message,
+		"detail": detail
+	}
+}
+
+func ok(name, message, detail) {
+	return make_result(name, 1, "info", message, detail)
+}
+
+func warn(name, message, detail) {
+	return make_result(name, 0, "warning", message, detail)
+}
+
+func fail(name, message, detail) {
+	r := make_result(name, 0, "error", message, detail)
+	return r
+}
+
+# --- Repo Health Checks ---
+
+export func check_git_repo(dir) {
+	cmd := "git -C " + dir + " rev-parse --git-dir 2>/dev/null"
+	result := execute_status(cmd)
+	ec := result.exitcode
+	if ec == 0 {
+		return ok("git-repo", "Git repository detected", "")
+	}
+	return fail("git-repo", "Not a git repository", "Run 'git init' to initialize")
+}
+
+export func check_readme(dir) {
+	paths := ["README.md", "readme.md", "README", "README.txt", "README.rst"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true {
+			return ok("readme", "README found: " + paths[i], "")
+		}
+		i = i + 1
+	}
+	return fail("readme", "No README file found", "Add a README.md with install and usage instructions")
+}
+
+export func check_license(dir) {
+	paths := ["LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "COPYING"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true {
+			return ok("license", "LICENSE found: " + paths[i], "")
+		}
+		i = i + 1
+	}
+	return warn("license", "No LICENSE file found", "Consider adding a LICENSE file")
+}
+
+export func check_gitignore(dir) {
+	paths := [".gitignore", ".dockerignore"]
+	mut i := 0
+	has_gitignore := 0
+	has_dockerignore := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true {
+			if paths[i] == ".gitignore" {
+				has_gitignore = 1
+			}
+			if paths[i] == ".dockerignore" {
+				has_dockerignore = 1
+			}
+		}
+		i = i + 1
+	}
+	parts := ""
+	if has_gitignore == 1 {
+		parts = parts + ".gitignore "
+	}
+	if has_dockerignore == 1 {
+		parts = parts + ".dockerignore "
+	}
+	if has_gitignore == 1 || has_dockerignore == 1 {
+		return ok("ignore-files", "Ignore files found: " + trim(parts), "")
+	}
+	return warn("ignore-files", "No .gitignore found", "Add a .gitignore to exclude build artifacts")
+}
+
+# --- Code Quality Checks ---
+
+export func check_tests(dir) {
+	paths := ["tests/", "test/", "spec/", "__tests__/"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if path_is_dir(p) == true {
+			return ok("tests-exist", "Test directory found: " + paths[i], "")
+		}
+		i = i + 1
+	}
+	# Also check for test files at root level
+	test_patterns := ["test_", "_test.kujo", ".test.kujo", "_tests.kujo", ".spec.kujo"]
+	entries := list_dir(dir)
+	mut j := 0
+	while j < len(entries) {
+		name := entries[j]
+		mut k := 0
+		while k < len(test_patterns) {
+			if contains(name, test_patterns[k]) == 1 {
+				return ok("tests-exist", "Test files found (pattern match)", "Matched: " + name)
+			}
+			k = k + 1
+		}
+		j = j + 1
+	}
+	return fail("tests-exist", "No test directory or test files found", "Add a tests/ directory or test files")
+}
+
+export func check_lint_command(dir) {
+	return detect_command(dir, "lint", ["lint", "check", "style"])
+}
+
+export func check_format_command(dir) {
+	return detect_command(dir, "format", ["format", "fmt", "beautify"])
+}
+
+export func check_ci_config(dir) {
+	paths := [".github/workflows/", ".gitlab-ci.yml", "Jenkinsfile", ".circleci/", ".travis.yml", "azure-pipelines.yml"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true || path_is_dir(p) == true {
+			return ok("ci-config", "CI configuration found: " + paths[i], "")
+		}
+		i = i + 1
+	}
+	return warn("ci-config", "No CI configuration detected", "Consider adding CI (e.g., .github/workflows/ci.yml)")
+}
+
+# --- Documentation Checks ---
+
+export func check_readme_has_install(dir) {
+	readme_path := find_readme(dir)
+	if readme_path == "" {
+		return warn("readme-install", "Cannot check: no README found", "")
+	}
+	content := read_file(readme_path)
+	lower := to_lower(content)
+	has_install := contains(lower, "install") == 1
+	has_quickstart := contains(lower, "quickstart") == 1 || contains(lower, "quick start") == 1
+	has_getting_started := contains(lower, "getting started") == 1
+	if has_install == 1 || has_quickstart == 1 || has_getting_started == 1 {
+		return ok("readme-install", "README has install/quickstart instructions", "")
+	}
+	return warn("readme-install", "README may lack install instructions", "Add an 'Install' or 'Quick Start' section")
+}
+
+export func check_readme_has_usage(dir) {
+	readme_path := find_readme(dir)
+	if readme_path == "" {
+		return warn("readme-usage", "Cannot check: no README found", "")
+	}
+	content := read_file(readme_path)
+	lower := to_lower(content)
+	has_usage := contains(lower, "usage") == 1
+	has_example := contains(lower, "example") == 1
+	if has_usage == 1 || has_example == 1 {
+		return ok("readme-usage", "README has usage/examples", "")
+	}
+	return warn("readme-usage", "README may lack usage instructions", "Add a 'Usage' section with examples")
+}
+
+export func check_examples(dir) {
+	examples_path := join_path(dir, "examples")
+	if path_is_dir(examples_path) == true {
+		entries := list_dir(examples_path)
+		if len(entries) > 0 {
+			return ok("examples", "Examples directory found with " + to_string(len(entries)) + " entries", "")
+		}
+		return warn("examples", "Examples directory exists but is empty", "Add example files")
+	}
+	# Check for demo directory
+	demo_path := join_path(dir, "demo")
+	if path_is_dir(demo_path) == true {
+		return ok("examples", "Demo directory found", "")
+	}
+	return warn("examples", "No examples/ or demo/ directory found", "Add examples to help users get started")
+}
+
+export func check_docs(dir) {
+	docs_path := join_path(dir, "docs")
+	if path_is_dir(docs_path) == true {
+		entries := list_dir(docs_path)
+		if len(entries) > 0 {
+			return ok("docs", "Documentation directory found with " + to_string(len(entries)) + " entries", "")
+		}
+		return warn("docs", "docs/ directory exists but is empty", "Add documentation files")
+	}
+	return warn("docs", "No docs/ directory found", "Consider adding a docs/ directory")
+}
+
+# --- Release Metadata Checks ---
+
+export func check_version_metadata(dir) {
+	# Check kennel.toml
+	kennel_path := join_path(dir, "kennel.toml")
+	if file_exists(kennel_path) == true {
+		content := read_file(kennel_path)
+		if contains(content, "version") == 1 {
+			return ok("version-metadata", "kennel.toml found with version field", "")
+		}
+		return warn("version-metadata", "kennel.toml found but no version field detected", "Add 'version' to [package] section")
+	}
+	# Check VERSION file
+	version_path := join_path(dir, "VERSION")
+	if file_exists(version_path) == true {
+		ver := trim(read_file(version_path))
+		return ok("version-metadata", "VERSION file found: " + ver, "")
+	}
+	# Check package.json
+	pkg_json := join_path(dir, "package.json")
+	if file_exists(pkg_json) == true {
+		return ok("version-metadata", "package.json found (may contain version)", "")
+	}
+	# Check Cargo.toml
+	cargo_path := join_path(dir, "Cargo.toml")
+	if file_exists(cargo_path) == true {
+		content := read_file(cargo_path)
+		if contains(content, "version") == 1 {
+			return ok("version-metadata", "Cargo.toml found with version field", "")
+		}
+	}
+	return fail("version-metadata", "No version metadata found", "Add kennel.toml, VERSION file, or package.json with version")
+}
+
+export func check_changelog(dir) {
+	paths := ["CHANGELOG.md", "CHANGELOG", "CHANGES.md", "CHANGES", "HISTORY.md", "RELEASE_NOTES.md"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true {
+			return ok("changelog", "Changelog found: " + paths[i], "")
+		}
+		i = i + 1
+	}
+	return fail("changelog", "No changelog found", "Add a CHANGELOG.md to track version changes")
+}
+
+export func check_kennel_manifest(dir) {
+	kennel_path := join_path(dir, "kennel.toml")
+	if file_exists(kennel_path) == false {
+		# Not a failure for non-Kujo projects
+		return warn("kennel-manifest", "No kennel.toml found", "Add kennel.toml for Kujo package metadata (if this is a Kujo project)")
+	}
+	content := read_file(kennel_path)
+	checks := {
+		"name": contains(content, "name") == 1,
+		"version": contains(content, "version") == 1,
+		"description": contains(content, "description") == 1,
+		"license": contains(content, "license") == 1
+	}
+	missing := ""
+	if checks["name"] == 0 {
+		missing = missing + "name "
+	}
+	if checks["version"] == 0 {
+		missing = missing + "version "
+	}
+	if checks["description"] == 0 {
+		missing = missing + "description "
+	}
+	if checks["license"] == 0 {
+		missing = missing + "license "
+	}
+	if missing == "" {
+		return ok("kennel-manifest", "kennel.toml found with all expected fields", "name, version, description, license present")
+	}
+	return warn("kennel-manifest", "kennel.toml found but missing fields: " + trim(missing), "Add missing [package] fields")
+}
+
+export func check_entry_point(dir) {
+	kennel_path := join_path(dir, "kennel.toml")
+	if file_exists(kennel_path) == true {
+		content := read_file(kennel_path)
+		if contains(content, "entry") == 1 {
+			return ok("entry-point", "kennel.toml has entry point defined", "")
+		}
+	}
+	# Check for common entry point patterns
+	root_entries := list_dir(dir)
+	mut i := 0
+	while i < len(root_entries) {
+		name := root_entries[i]
+		if ends_with(name, ".kujo") == 1 && starts_with(name, ".") == 0 {
+			# Check if it looks like a CLI entry point (has args() or main())
+			p := join_path(dir, name)
+			if file_exists(p) == true {
+				content := read_file(p)
+				if contains(content, "args()") == 1 || contains(content, "func main") == 1 {
+					return ok("entry-point", "Likely entry point found: " + name, "")
+				}
+			}
+		}
+		i = i + 1
+	}
+	return warn("entry-point", "No clear entry point detected", "Define 'entry' in kennel.toml [kujo] section or add a main .kujo script")
+}
+
+# --- Internal Helpers ---
+
+func find_readme(dir) {
+	paths := ["README.md", "readme.md", "README", "README.txt", "README.rst"]
+	mut i := 0
+	while i < len(paths) {
+		p := join_path(dir, paths[i])
+		if file_exists(p) == true {
+			return p
+		}
+		i = i + 1
+	}
+	return ""
+}
+
+func detect_command(dir, cmd_category, keywords) {
+	# Check kennel.toml scripts section
+	kennel_path := join_path(dir, "kennel.toml")
+	if file_exists(kennel_path) == true {
+		content := read_file(kennel_path)
+		mut i := 0
+		while i < len(keywords) {
+			kw := keywords[i]
+			if contains(content, kw) == 1 {
+				return ok(cmd_category + "-command", "kennel.toml references " + kw + " command", "")
+			}
+			i = i + 1
+		}
+	}
+	# Check Makefile
+	makefile := join_path(dir, "Makefile")
+	if file_exists(makefile) == true {
+		content := read_file(makefile)
+		mut i := 0
+		while i < len(keywords) {
+			kw := keywords[i]
+			if contains(content, kw) == 1 {
+				return ok(cmd_category + "-command", "Makefile has " + kw + " target", "")
+			}
+			i = i + 1
+		}
+	}
+	# Check package.json scripts
+	pkg_json := join_path(dir, "package.json")
+	if file_exists(pkg_json) == true {
+		content := read_file(pkg_json)
+		mut i := 0
+		while i < len(keywords) {
+			kw := keywords[i]
+			if contains(content, kw) == 1 {
+				return ok(cmd_category + "-command", "package.json scripts reference " + kw, "")
+			}
+			i = i + 1
+		}
+	}
+	# Check if kujo.toml or similar config files exist (implies Kujo tooling)
+	if cmd_category == "lint" || cmd_category == "format" {
+		kujo_toml := join_path(dir, "kujo.toml")
+		if file_exists(kujo_toml) == true {
+			return ok(cmd_category + "-command", "kujo.toml found (Kujo lint/format available)", "")
+		}
+	}
+	return warn(cmd_category + "-command", "No " + cmd_category + " command detected", "Add a " + cmd_category + " script or Makefile target")
+}
+
+# --- Project Type Detection ---
+
+export func detect_project_type(dir) {
+	if file_exists(join_path(dir, "kennel.toml")) == true {
+		return "kujo"
+	}
+	if file_exists(join_path(dir, "Cargo.toml")) == true {
+		return "rust"
+	}
+	if file_exists(join_path(dir, "package.json")) == true {
+		return "node"
+	}
+	if file_exists(join_path(dir, "go.mod")) == true {
+		return "go"
+	}
+	if file_exists(join_path(dir, "pyproject.toml")) == true || file_exists(join_path(dir, "setup.py")) == true {
+		return "python"
+	}
+	if file_exists(join_path(dir, "composer.json")) == true {
+		return "php"
+	}
+	if file_exists(join_path(dir, "Gemfile")) == true {
+		return "ruby"
+	}
+	if file_exists(join_path(dir, "Makefile")) == true {
+		return "make-based"
+	}
+	return "unknown"
+}
+
+export func detect_version(dir) {
+	# Try kennel.toml first
+	kennel_path := join_path(dir, "kennel.toml")
+	if file_exists(kennel_path) == true {
+		content := read_file(kennel_path)
+		lines_list := split(content, "\n")
+		mut i := 0
+		while i < len(lines_list) {
+			line := lines_list[i]
+			if contains(line, "version") == 1 && contains(line, "=") == 1 {
+				parts := split(line, "=")
+				if len(parts) >= 2 {
+					ver := trim(replace(trim(parts[1]), "\"", ""))
+					if ver != "" {
+						return ver
+					}
+				}
+			}
+			i = i + 1
+		}
+	}
+	# Try VERSION file
+	version_path := join_path(dir, "VERSION")
+	if file_exists(version_path) == true {
+		return trim(read_file(version_path))
+	}
+	return "unknown"
+}

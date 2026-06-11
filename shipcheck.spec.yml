@@ -1,0 +1,31 @@
+name: shipcheck
+id: 3e8f0183-6e58-4a35-9735-9f82a7ff13c0
+version: 0.1.0
+status: in-progress
+priority: high
+
+goal: >
+  Provide a local release-readiness scanner for Kujo ecosystem repositories,
+  with deterministic markdown/json output and CI-friendly gate behavior.
+
+scope:
+  - scan repository health, docs quality, and release metadata signals
+  - emit markdown and json reports
+  - provide checklist and gate commands for release workflows
+
+non_goals:
+  - network services or hosted dashboards
+  - automatic source modification
+
+acceptance_criteria:
+  - "kujo run shipcheck.kujo -- scan returns a markdown report"
+  - "kujo run shipcheck.kujo -- scan --format json returns valid json"
+  - "kujo run shipcheck.kujo -- checklist returns actionable release items"
+  - "kujo run shipcheck.kujo -- gate exits non-zero when error checks fail"
+  - "kujo run shipcheck.kujo -- help returns usage guidance"
+  - "ShipCheck can scan itself and at least one external local repository"
+
+review_expectations:
+  - command surface remains stable and documented in README
+  - check definitions stay aligned with docs/check-catalog.md
+  - gate semantics remain deterministic for CI usage
