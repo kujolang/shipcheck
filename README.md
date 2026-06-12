@@ -11,6 +11,44 @@ It audits a local repository and produces:
 
 ShipCheck surfaces blockers and follow-up work; it does not certify a release or replace human review.
 
+## Install / Quick Start
+
+Requirements:
+
+- Kujo runtime available as `kujo`
+- Git available on `PATH`
+
+Run from this repository:
+
+```bash
+kujo run shipcheck.kujo help
+kujo run shipcheck.kujo scan
+kujo run shipcheck.kujo gate
+```
+
+Expected gate behavior:
+
+- `scan` prints findings without failing the command.
+- `gate` exits `1` when error-level checks fail.
+- `gate` exits `0` when only warnings or passing checks remain.
+
+## Usage Examples
+
+Emit JSON for automation:
+
+```bash
+kujo run shipcheck.kujo scan --format json
+```
+
+Scan another repository:
+
+```bash
+kujo run shipcheck.kujo scan --dir ../kujo-spec
+kujo run shipcheck.kujo gate --dir ../kujo-spec --format json
+```
+
+Use `help` and `version`; standalone `--help` and `--version` aliases are not implemented in this wrapper.
+
 ## Release-Readiness Capabilities
 
 - Scans repository health, code quality, documentation, and release metadata.
@@ -18,31 +56,6 @@ ShipCheck surfaces blockers and follow-up work; it does not certify a release or
 - Uses error vs warning severity so teams can gate on what matters.
 - Works fully offline on local repositories.
 - Produces structured JSON for automation and reporting systems.
-
-## Requirements
-
-- Kujo runtime available as `kujo`
-- Git available on `PATH`
-
-## Quick Start
-
-Run from this repository:
-
-```bash
-kujo run shipcheck.kujo -- help
-kujo run shipcheck.kujo -- scan
-kujo run shipcheck.kujo -- scan --format json
-kujo run shipcheck.kujo -- gate
-```
-
-Use `help` and `version`; standalone `--help` and `--version` aliases are not implemented in this wrapper.
-
-Scan another repository:
-
-```bash
-kujo run shipcheck.kujo -- scan --dir ../kujo-spec
-kujo run shipcheck.kujo -- gate --dir ../kujo-spec --format json
-```
 
 ## Command Reference
 
@@ -86,13 +99,13 @@ Full catalog and severity definitions are documented in [docs/check-catalog.md](
 Example release gate step:
 
 ```bash
-kujo run shipcheck.kujo -- gate --dir . --format json
+kujo run shipcheck.kujo gate --dir . --format json
 ```
 
 If your policy needs a saved artifact:
 
 ```bash
-kujo run shipcheck.kujo -- scan --dir . --format json > shipcheck-report.json
+kujo run shipcheck.kujo scan --dir . --format json > shipcheck-report.json
 ```
 
 Additional operational guidance is in [docs/operations.md](docs/operations.md).
@@ -110,6 +123,7 @@ ShipCheck is in early-stage maturity, but the command surface and gate behavior 
 - `src/scan.kujo` scan orchestration
 - `src/report.kujo` markdown/json/checklist/release-note output
 - `docs/` operational and check reference documentation
+- `AGENTS.md` contributor and agent guidance for canonical examples and search hygiene
 
 The example shell script under `examples/` expects the Kujo runtime to be available as `kujo` on `PATH`.
 
@@ -119,4 +133,6 @@ Release notes and history are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Dogfood Artifacts
 
-Historical implementation and ecosystem notes are preserved under [.dogfood/shipcheck](.dogfood/shipcheck).
+Historical implementation and ecosystem notes are preserved under [.dogfood/shipcheck](.dogfood/shipcheck). Treat them as background context, not canonical examples.
+
+Generated or bulk evaluation output lives under `eval_results/`; exclude it from broad readability sweeps unless the task explicitly targets eval artifacts.

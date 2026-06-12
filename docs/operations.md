@@ -44,6 +44,13 @@ Expected behavior:
 
 ShipCheck does not implement standalone `--help` or `--version` aliases in this wrapper; use `help` and `version`.
 
+## Example and Artifact Hygiene
+
+- Treat `README.md`, `docs/`, and `examples/` as the canonical copyable surfaces.
+- Keep examples short enough to paste into a terminal without editing.
+- Do not commit generated scan artifacts such as `shipcheck-report.json`.
+- Exclude `.dogfood/` and `eval_results/` from broad cleanup sweeps unless the task targets those paths.
+
 ## Suggested Release Policy
 
 1. Run `scan` and review warnings.
