@@ -163,7 +163,7 @@ export func check_readme_has_install(dir) {
 	has_install := contains(lower, "install") == 1
 	has_quickstart := contains(lower, "quickstart") == 1 || contains(lower, "quick start") == 1
 	has_getting_started := contains(lower, "getting started") == 1
-	if has_install == 1 || has_quickstart == 1 || has_getting_started == 1 {
+	if has_install || has_quickstart || has_getting_started {
 		return ok("readme-install", "README has install/quickstart instructions", "")
 	}
 	return warn("readme-install", "README may lack install instructions", "Add an 'Install' or 'Quick Start' section")
@@ -178,7 +178,7 @@ export func check_readme_has_usage(dir) {
 	lower := to_lower(content)
 	has_usage := contains(lower, "usage") == 1
 	has_example := contains(lower, "example") == 1
-	if has_usage == 1 || has_example == 1 {
+	if has_usage || has_example {
 		return ok("readme-usage", "README has usage/examples", "")
 	}
 	return warn("readme-usage", "README may lack usage instructions", "Add a 'Usage' section with examples")
@@ -267,23 +267,17 @@ export func check_kennel_manifest(dir) {
 		return warn("kennel-manifest", "No kennel.toml found", "Add kennel.toml for Kujo package metadata (if this is a Kujo project)")
 	}
 	content := read_file(kennel_path)
-	checks := {
-		"name": contains(content, "name") == 1,
-		"version": contains(content, "version") == 1,
-		"description": contains(content, "description") == 1,
-		"license": contains(content, "license") == 1
-	}
 	missing := ""
-	if checks["name"] == 0 {
+	if contains(content, "name") == 0 {
 		missing = missing + "name "
 	}
-	if checks["version"] == 0 {
+	if contains(content, "version") == 0 {
 		missing = missing + "version "
 	}
-	if checks["description"] == 0 {
+	if contains(content, "description") == 0 {
 		missing = missing + "description "
 	}
-	if checks["license"] == 0 {
+	if contains(content, "license") == 0 {
 		missing = missing + "license "
 	}
 	if missing == "" {
