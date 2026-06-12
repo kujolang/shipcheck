@@ -8,25 +8,29 @@ export func report_markdown(results) {
 	project_type := results["project_type"]
 	checks := results["checks"]
 
-	print("# ShipCheck Release-Readiness Report")
-	print("")
-	print("**Directory:** " + dir)
-	print("**Project type:** " + project_type)
-	print("")
+	print_lines([
+		"# ShipCheck Release-Readiness Report",
+		"",
+		"**Directory:** " + dir,
+		"**Project type:** " + project_type,
+		""
+	])
 
 	passed := count_passed(checks)
 	failed := count_failed(checks, "error")
 	warnings := count_failed(checks, "warning")
 	total := len(checks)
 
-	print("## Summary")
-	print("")
-	print("| Metric | Count |")
-	print("|--------|-------|")
-	print("| Total checks | " + to_string(total) + " |")
-	print("| Passed | " + to_string(passed) + " |")
-	print("| Failed (errors) | " + to_string(failed) + " |")
-	print("| Warnings | " + to_string(warnings) + " |")
+	print_lines([
+		"## Summary",
+		"",
+		"| Metric | Count |",
+		"|--------|-------|",
+		"| Total checks | " + to_string(total) + " |",
+		"| Passed | " + to_string(passed) + " |",
+		"| Failed (errors) | " + to_string(failed) + " |",
+		"| Warnings | " + to_string(warnings) + " |"
+	])
 
 	if failed == 0 && warnings == 0 {
 		print("| **Gate** | **PASSED** |")
@@ -39,21 +43,10 @@ export func report_markdown(results) {
 	}
 	print("")
 
-	print("## Repository Health")
-	print("")
-	print_checks(checks, ["git-repo", "readme", "license", "ignore-files"])
-
-	print("## Code Quality")
-	print("")
-	print_checks(checks, ["tests-exist", "lint-command", "format-command", "ci-config"])
-
-	print("## Documentation")
-	print("")
-	print_checks(checks, ["readme-install", "readme-usage", "examples", "docs"])
-
-	print("## Release Metadata")
-	print("")
-	print_checks(checks, ["version-metadata", "changelog", "kennel-manifest", "entry-point"])
+	print_check_section(checks, "Repository Health", ["git-repo", "readme", "license", "ignore-files"])
+	print_check_section(checks, "Code Quality", ["tests-exist", "lint-command", "format-command", "ci-config"])
+	print_check_section(checks, "Documentation", ["readme-install", "readme-usage", "examples", "docs"])
+	print_check_section(checks, "Release Metadata", ["version-metadata", "changelog", "kennel-manifest", "entry-point"])
 }
 
 export func report_json(results) {
@@ -105,65 +98,49 @@ export func generate_checklist(results) {
 	checks := results["checks"]
 	dir := results["dir"]
 
-	print("# Release Checklist")
-	print("")
-	print("**Repository:** " + dir)
-	print("")
+	print_lines([
+		"# Release Checklist",
+		"",
+		"**Repository:** " + dir,
+		""
+	])
 
-	print("## Pre-Release Checks")
-	print("")
-	print("- [ ] All tests pass")
-	print("- [ ] Linting passes")
-	print("- [ ] Formatting is consistent")
-	print("- [ ] CI is green on main branch")
-	print("")
+	print_checklist_section("Pre-Release Checks", [
+		"All tests pass",
+		"Linting passes",
+		"Formatting is consistent",
+		"CI is green on main branch"
+	])
+	print_checklist_section("Documentation", [
+		"README is up to date with install instructions",
+		"README has usage examples",
+		"Examples directory has current examples",
+		"API docs are regenerated (if applicable)",
+		"CHANGELOG.md is updated with this version's changes"
+	])
+	print_checklist_section("Version & Metadata", [
+		"Version bumped in kennel.toml (or equivalent)",
+		"Version tag created: `git tag v<VERSION>`",
+		"Package manifest fields are correct (name, description, license)",
+		"Entry point is correct and tested"
+	])
+	print_checklist_section("Release Artifacts", [
+		"Build succeeds from clean checkout",
+		"Release artifacts generated (binary, archive, etc.)",
+		"Release notes drafted",
+		"Release published (GitHub Release, registry, etc.)"
+	])
+	print_checklist_section("Post-Release", [
+		"Release tagged and pushed: `git push --tags`",
+		"Announcement posted (if applicable)",
+		"Downstream dependencies tested"
+	])
 
-	print("## Documentation")
-	print("")
-	print("- [ ] README is up to date with install instructions")
-	print("- [ ] README has usage examples")
-	print("- [ ] Examples directory has current examples")
-	print("- [ ] API docs are regenerated (if applicable)")
-	print("- [ ] CHANGELOG.md is updated with this version's changes")
-	print("")
-
-	print("## Version & Metadata")
-	print("")
-	print("- [ ] Version bumped in kennel.toml (or equivalent)")
-	print("- [ ] Version tag created: `git tag v<VERSION>`")
-	print("- [ ] Package manifest fields are correct (name, description, license)")
-	print("- [ ] Entry point is correct and tested")
-	print("")
-
-	print("## Release Artifacts")
-	print("")
-	print("- [ ] Build succeeds from clean checkout")
-	print("- [ ] Release artifacts generated (binary, archive, etc.)")
-	print("- [ ] Release notes drafted")
-	print("- [ ] Release published (GitHub Release, registry, etc.)")
-	print("")
-
-	print("## Post-Release")
-	print("")
-	print("- [ ] Release tagged and pushed: `git push --tags`")
-	print("- [ ] Announcement posted (if applicable)")
-	print("- [ ] Downstream dependencies tested")
-	print("")
-
-	print("## Current State (from ShipCheck scan)")
-	print("")
+	print_lines(["## Current State (from ShipCheck scan)", ""])
 	mut i := 0
 	while i < len(checks) {
 		c := checks[i]
-		icon := "[PASS]"
-		if c["passed"] == 0 {
-			if c["severity"] == "error" {
-				icon = "[FAIL]"
-			} else {
-				icon = "[WARN]"
-			}
-		}
-		print(icon + " " + c["message"])
+		print(status_icon(c) + " " + c["message"])
 		i = i + 1
 	}
 }
@@ -171,48 +148,32 @@ export func generate_checklist(results) {
 export func generate_release_note(results, version) {
 	dir := results["dir"]
 
-	print("# Release Notes — v" + version)
-	print("")
-	print("**Repository:** " + dir)
-	print("")
+	print_lines([
+		"# Release Notes — v" + version,
+		"",
+		"**Repository:** " + dir,
+		""
+	])
 
 	result := execute_status("git -C " + dir + " log --oneline -20 2>/dev/null")
 	if result.exitcode == 0 && result.stdout != "" {
-		print("## Recent Commits")
-		print("")
-		print("```")
-		print(trim(result.stdout))
-		print("```")
-		print("")
+		print_lines(["## Recent Commits", "", "```", trim(result.stdout), "```", ""])
 	}
 
-	print("## Changes")
-	print("")
-	print("<!-- Describe the key changes in this release -->")
-	print("")
-	print("### Added")
-	print("- ")
-	print("")
-	print("### Changed")
-	print("- ")
-	print("")
-	print("### Fixed")
-	print("- ")
-	print("")
-	print("### Deprecated")
-	print("- ")
-	print("")
-	print("### Removed")
-	print("- ")
-	print("")
-	print("### Security")
-	print("- ")
-	print("")
-	print("## Installation")
-	print("")
-	print("```bash")
-	print("# Add installation instructions here")
-	print("```")
+	print_lines([
+		"## Changes",
+		"",
+		"<!-- Describe the key changes in this release -->",
+		""
+	])
+	print_release_note_sections(["Added", "Changed", "Fixed", "Deprecated", "Removed", "Security"])
+	print_lines([
+		"## Installation",
+		"",
+		"```bash",
+		"# Add installation instructions here",
+		"```"
+	])
 }
 
 export func gate_passed(results) {
@@ -253,20 +214,57 @@ func count_failed(checks, severity) {
 	return count
 }
 
+func print_lines(lines) {
+	mut i := 0
+	while i < len(lines) {
+		print(lines[i])
+		i = i + 1
+	}
+}
+
+func print_check_section(checks, title, names) {
+	print("## " + title)
+	print("")
+	print_checks(checks, names)
+}
+
+func print_checklist_section(title, items) {
+	print("## " + title)
+	print("")
+	mut i := 0
+	while i < len(items) {
+		print("- [ ] " + items[i])
+		i = i + 1
+	}
+	print("")
+}
+
+func print_release_note_sections(names) {
+	mut i := 0
+	while i < len(names) {
+		print("### " + names[i])
+		print("- ")
+		print("")
+		i = i + 1
+	}
+}
+
+func status_icon(check) {
+	if check["passed"] == 1 {
+		return "[PASS]"
+	}
+	if check["severity"] == "error" {
+		return "[FAIL]"
+	}
+	return "[WARN]"
+}
+
 func print_checks(all_checks, names) {
 	mut i := 0
 	while i < len(names) {
 		name := names[i]
 		c := find_check(all_checks, name)
-		if c["passed"] == 1 {
-			print("- [PASS] " + c["message"])
-		} else {
-			if c["severity"] == "error" {
-				print("- [FAIL] " + c["message"])
-			} else {
-				print("- [WARN] " + c["message"])
-			}
-		}
+		print("- " + status_icon(c) + " " + c["message"])
 		i = i + 1
 	}
 }

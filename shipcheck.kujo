@@ -11,36 +11,38 @@
 VERSION := "0.1.0"
 
 func print_help() {
-	print("ShipCheck v" + VERSION)
-	print("")
-	print("A local developer tool that inspects a repository and produces")
-	print("a release-readiness report.")
-	print("")
-	print("Usage:")
-	print("  kujo run shipcheck.kujo scan [--dir <path>] [--format markdown|json]")
-	print("  kujo run shipcheck.kujo checklist [--dir <path>]")
-	print("  kujo run shipcheck.kujo gate [--dir <path>] [--format markdown|json]")
-	print("  kujo run shipcheck.kujo release-note [--dir <path>]")
-	print("  kujo run shipcheck.kujo version")
-	print("  kujo run shipcheck.kujo help")
-	print("")
-	print("Commands:")
-	print("  scan          Scan a repo and produce a release-readiness report")
-	print("  checklist     Generate a release checklist")
-	print("  gate          Run release gate checks (exits non-zero on failure)")
-	print("  release-note  Draft release notes from recent commits")
-	print("  version       Print version information")
-	print("  help          Print this help message")
-	print("")
-	print("Options:")
-	print("  --dir         Target directory (default: current directory)")
-	print("  --format      Output format: markdown (default) or json")
-	print("")
-	print("Examples:")
-	print("  kujo run shipcheck.kujo scan")
-	print("  kujo run shipcheck.kujo scan --dir ../my-project --format json")
-	print("  kujo run shipcheck.kujo checklist")
-	print("  kujo run shipcheck.kujo gate")
+	print_lines([
+		"ShipCheck v" + VERSION,
+		"",
+		"A local developer tool that inspects a repository and produces",
+		"a release-readiness report.",
+		"",
+		"Usage:",
+		"  kujo run shipcheck.kujo scan [--dir <path>] [--format markdown|json]",
+		"  kujo run shipcheck.kujo checklist [--dir <path>]",
+		"  kujo run shipcheck.kujo gate [--dir <path>] [--format markdown|json]",
+		"  kujo run shipcheck.kujo release-note [--dir <path>]",
+		"  kujo run shipcheck.kujo version",
+		"  kujo run shipcheck.kujo help",
+		"",
+		"Commands:",
+		"  scan          Scan a repo and produce a release-readiness report",
+		"  checklist     Generate a release checklist",
+		"  gate          Run release gate checks (exits non-zero on failure)",
+		"  release-note  Draft release notes from recent commits",
+		"  version       Print version information",
+		"  help          Print this help message",
+		"",
+		"Options:",
+		"  --dir         Target directory (default: current directory)",
+		"  --format      Output format: markdown (default) or json",
+		"",
+		"Examples:",
+		"  kujo run shipcheck.kujo scan",
+		"  kujo run shipcheck.kujo scan --dir ../my-project --format json",
+		"  kujo run shipcheck.kujo checklist",
+		"  kujo run shipcheck.kujo gate"
+	])
 }
 
 func print_version() {
@@ -50,6 +52,14 @@ func print_version() {
 }
 
 # --- CLI Helpers (inlined to minimize module dependencies) ---
+
+func print_lines(lines) {
+	mut i := 0
+	while i < len(lines) {
+		print(lines[i])
+		i = i + 1
+	}
+}
 
 func parse_subcommand(argv) {
 	if len(argv) < 1 {
