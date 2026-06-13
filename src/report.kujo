@@ -32,16 +32,7 @@ export func report_markdown(results) {
 		"| Warnings | " + to_string(warnings) + " |"
 	])
 
-	if failed == 0 && warnings == 0 {
-		print("| **Gate** | **PASSED** |")
-	} else {
-		if failed > 0 {
-			print("| **Gate** | **FAILED** |")
-		} else {
-			print("| **Gate** | **PASSED (warnings)** |")
-		}
-	}
-	print("")
+	print_lines([gate_summary_row(failed, warnings), ""])
 
 	print_check_section(checks, "Repository Health", ["git-repo", "readme", "license", "ignore-files"])
 	print_check_section(checks, "Code Quality", ["tests-exist", "lint-command", "format-command", "ci-config"])
@@ -223,14 +214,12 @@ func print_lines(lines) {
 }
 
 func print_check_section(checks, title, names) {
-	print("## " + title)
-	print("")
+	print_heading(title)
 	print_checks(checks, names)
 }
 
 func print_checklist_section(title, items) {
-	print("## " + title)
-	print("")
+	print_heading(title)
 	mut i := 0
 	while i < len(items) {
 		print("- [ ] " + items[i])
@@ -242,11 +231,23 @@ func print_checklist_section(title, items) {
 func print_release_note_sections(names) {
 	mut i := 0
 	while i < len(names) {
-		print("### " + names[i])
-		print("- ")
-		print("")
+		print_lines(["### " + names[i], "- ", ""])
 		i = i + 1
 	}
+}
+
+func print_heading(title) {
+	print_lines(["## " + title, ""])
+}
+
+func gate_summary_row(failed, warnings) {
+	if failed > 0 {
+		return "| **Gate** | **FAILED** |"
+	}
+	if warnings > 0 {
+		return "| **Gate** | **PASSED (warnings)** |"
+	}
+	return "| **Gate** | **PASSED** |"
 }
 
 func status_icon(check) {

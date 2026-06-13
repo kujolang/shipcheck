@@ -46,9 +46,11 @@ func print_help() {
 }
 
 func print_version() {
-	print("ShipCheck v" + VERSION)
-	print("A Kujo ecosystem dogfood showcase tool.")
-	print("Release-readiness scanner for local repositories.")
+	print_lines([
+		"ShipCheck v" + VERSION,
+		"A Kujo ecosystem dogfood showcase tool.",
+		"Release-readiness scanner for local repositories."
+	])
 }
 
 # --- CLI Helpers (inlined to minimize module dependencies) ---
@@ -155,12 +157,10 @@ func main() {
 			report_markdown(results)
 		}
 		if gate_passed(results) == false {
-			print("")
-			print("Gate FAILED: Not all required checks passed.")
+			print_lines(["", "Gate FAILED: Not all required checks passed."])
 			exit(1)
 		}
-		print("")
-		print("Gate PASSED: All required checks passed.")
+		print_lines(["", "Gate PASSED: All required checks passed."])
 		exit(0)
 	}
 
@@ -174,8 +174,10 @@ func main() {
 		exit(0)
 	}
 
-	print("Error: Unknown subcommand: " + subcommand)
-	print("Run 'kujo run shipcheck.kujo help' for usage.")
+	print_lines([
+		"Error: Unknown subcommand: " + subcommand,
+		"Run 'kujo run shipcheck.kujo help' for usage."
+	])
 	exit(2)
 }
 
