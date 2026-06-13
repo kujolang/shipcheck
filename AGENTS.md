@@ -31,6 +31,10 @@ rg -n "print\\(|format json|checklist|gate|release-note" README.md docs examples
 
 Prioritize copyable examples over tests: examples should model the most token-efficient idioms we want agents to imitate.
 
+## Output Style
+
+For repeated static CLI output, prefer a small local `print_lines([...])` helper over runs of adjacent `print(...)` calls. Keep first-run examples direct, and only add helpers when they make the command or report easier to scan.
+
 ## Validation
 
 If `kujo` is not on `PATH`, set `KUJO_BIN` to the local runtime path before running tests:
