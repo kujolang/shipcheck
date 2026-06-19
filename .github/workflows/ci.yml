@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      KUJO_RUNTIME_REF: 681c58f8c0c3ef5bcb0d887a7e6629849daa539e
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Build pinned Kujo runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init /tmp/kujo-runtime
+          git -C /tmp/kujo-runtime remote add origin https://github.com/kujolang/kujo.git
+          git -C /tmp/kujo-runtime fetch --depth 1 origin "$KUJO_RUNTIME_REF"
+          git -C /tmp/kujo-runtime checkout --detach "$KUJO_RUNTIME_REF"
+          cargo build --release --locked --manifest-path /tmp/kujo-runtime/Cargo.toml --bin kujo
+          echo "KUJO_BIN=/tmp/kujo-runtime/target/release/kujo" >> "$GITHUB_ENV"
+          echo "/tmp/kujo-runtime/target/release" >> "$GITHUB_PATH"
+
+      - name: Verify runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$KUJO_BIN" --version
+          "$KUJO_BIN" run --help >/dev/null
+
+      - name: Run CLI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          KUJO_BIN="$KUJO_BIN" tests/cli-output-contract.sh
+
+      - name: Run ShipCheck self scan and gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$KUJO_BIN" run shipcheck.kujo scan --dir . --format json
+          "$KUJO_BIN" run shipcheck.kujo gate --dir .
