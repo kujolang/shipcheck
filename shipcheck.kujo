@@ -98,6 +98,15 @@ func target_dir(argv) {
 	return d
 }
 
+func output_format(argv) {
+	format := to_lower(flag_value(argv, "--format", "markdown"))
+	if format == "markdown" || format == "json" {
+		return format
+	}
+	print("Error: Unsupported format: " + format + " (expected markdown or json)")
+	exit(2)
+}
+
 # --- Main ---
 
 func main() {
@@ -124,8 +133,7 @@ func main() {
 	}
 
 	if subcommand == "scan" {
-		format := flag_value(argv, "--format", "markdown")
-		lower_format := to_lower(format)
+		lower_format := output_format(argv)
 		from src.scan import run_scan
 		from src.report import report_markdown, report_json
 		results := run_scan(dir)
@@ -146,13 +154,16 @@ func main() {
 	}
 
 	if subcommand == "gate" {
-		format := flag_value(argv, "--format", "markdown")
-		lower_format := to_lower(format)
+		lower_format := output_format(argv)
 		from src.scan import run_scan
 		from src.report import report_markdown, report_json, gate_passed
 		results := run_scan(dir)
 		if lower_format == "json" {
 			report_json(results)
+			if gate_passed(results) == false {
+				exit(1)
+			}
+			exit(0)
 		} else {
 			report_markdown(results)
 		}

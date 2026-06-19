@@ -73,7 +73,30 @@ assert data["tool"] == "shipcheck"
 assert data["version"] == "0.1.0"
 assert data["summary"]["total_checks"] == 16
 assert len(data["checks"]) == 16
+assert data["summary"]["gate_passed"] in (0, 1)
 PY
+
+gate_json_output="$(shipcheck gate --dir "$ROOT" --format json)"
+JSON_OUTPUT="$gate_json_output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["JSON_OUTPUT"])
+assert data["tool"] == "shipcheck"
+assert data["summary"]["gate_passed"] == 1
+PY
+
+set +e
+bad_format_output="$(shipcheck scan --format yaml 2>&1)"
+bad_format_status=$?
+set -e
+
+if [[ "$bad_format_status" -ne 2 ]]; then
+	printf '%s\n' "FAILED: unsupported format should exit 2" >&2
+	exit 1
+fi
+
+grep -q "Unsupported format: yaml" <<<"$bad_format_output"
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -89,3 +112,53 @@ if [[ "$gate_status" -ne 1 ]]; then
 fi
 
 grep -q "Gate FAILED: Not all required checks passed." "$tmpdir/gate.out"
+
+set +e
+failed_gate_json="$(shipcheck gate --dir "$tmpdir" --format json)"
+failed_gate_status=$?
+set -e
+
+if [[ "$failed_gate_status" -ne 1 ]]; then
+	printf '%s\n' "FAILED: json gate should exit 1 for a non-repo fixture" >&2
+	exit 1
+fi
+
+JSON_OUTPUT="$failed_gate_json" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["JSON_OUTPUT"])
+assert data["summary"]["gate_passed"] == 0
+assert data["summary"]["failed_errors"] > 0
+PY
+
+hostile_dir="$tmpdir/repo with spaces; touch $tmpdir/shipcheck-pwned"
+mkdir -p "$hostile_dir"
+git -C "$hostile_dir" init -q
+printf '# Hostile Fixture\n' >"$hostile_dir/README.md"
+printf '0.0.1\n' >"$hostile_dir/VERSION"
+printf '# Changelog\n' >"$hostile_dir/CHANGELOG.md"
+mkdir -p "$hostile_dir/tests"
+
+hostile_json="$(shipcheck scan --dir "$hostile_dir" --format json)"
+if [[ -e "$tmpdir/shipcheck-pwned" ]]; then
+	printf '%s\n' "FAILED: scan executed shell metacharacters from --dir" >&2
+	exit 1
+fi
+
+JSON_OUTPUT="$hostile_json" HOSTILE_DIR="$hostile_dir" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["JSON_OUTPUT"])
+assert data["dir"] == os.environ["HOSTILE_DIR"]
+assert any(check["name"] == "git-repo" and check["passed"] == 1 for check in data["checks"])
+PY
+
+shipcheck release-note --dir "$hostile_dir" >"$tmpdir/release-note.out"
+if [[ -e "$tmpdir/shipcheck-pwned" ]]; then
+	printf '%s\n' "FAILED: release-note executed shell metacharacters from --dir" >&2
+	exit 1
+fi
+
+grep -q "# Release Notes" "$tmpdir/release-note.out"

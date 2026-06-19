@@ -35,7 +35,7 @@ func fail(name, message, detail) {
 # --- Repo Health Checks ---
 
 export func check_git_repo(dir) {
-	cmd := "git -C " + dir + " rev-parse --git-dir 2>/dev/null"
+	cmd := "git -C " + shell_quote(dir) + " rev-parse --git-dir 2>/dev/null"
 	result := execute_status(cmd)
 	ec := result.exitcode
 	if ec == 0 {
@@ -327,6 +327,10 @@ func find_readme(dir) {
 		i = i + 1
 	}
 	return ""
+}
+
+func shell_quote(value) {
+	return "'" + replace(value, "'", "'\"'\"'") + "'"
 }
 
 func detect_command(dir, cmd_category, keywords) {

@@ -146,7 +146,7 @@ export func generate_release_note(results, version) {
 		""
 	])
 
-	result := execute_status("git -C " + dir + " log --oneline -20 2>/dev/null")
+	result := execute_status("git -C " + shell_quote(dir) + " log --oneline -20 2>/dev/null")
 	if result.exitcode == 0 && result.stdout != "" {
 		print_lines(["## Recent Commits", "", "```", trim(result.stdout), "```", ""])
 	}
@@ -213,9 +213,14 @@ func print_lines(lines) {
 	}
 }
 
+func shell_quote(value) {
+	return "'" + replace(value, "'", "'\"'\"'") + "'"
+}
+
 func print_check_section(checks, title, names) {
 	print_heading(title)
 	print_checks(checks, names)
+	print("")
 }
 
 func print_checklist_section(title, items) {
