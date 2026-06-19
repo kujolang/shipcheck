@@ -25,9 +25,10 @@ For machine processing:
 
 ```bash
 kujo run /path/to/shipcheck/shipcheck.kujo scan --dir . --format json > shipcheck-report.json
+kujo run /path/to/shipcheck/shipcheck.kujo gate --dir . --format json
 ```
 
-You can archive this output as a build artifact or parse it in policy scripts.
+`scan --format json` is useful as an archived artifact. `gate --format json` is suitable for policy scripts because the output is valid JSON and the process exit code still carries the pass/fail result.
 
 ## CI Gate Pattern
 
@@ -44,12 +45,21 @@ Expected behavior:
 
 ShipCheck does not implement standalone `--help` or `--version` aliases in this wrapper; use `help` and `version`.
 
+The repository includes `.github/workflows/ci.yml`, which builds a pinned Kujo runtime, runs the CLI output contract, and executes ShipCheck's own scan and gate.
+
 ## Example and Artifact Hygiene
 
 - Treat `README.md`, `docs/`, and `examples/` as the canonical copyable surfaces.
 - Keep examples short enough to paste into a terminal without editing.
 - Do not commit generated scan artifacts such as `shipcheck-report.json`.
 - Exclude `.dogfood/` and `eval_results/` from broad cleanup sweeps unless the task targets those paths.
+
+## Security Posture
+
+- Paths passed to Git subprocesses are shell-quoted before execution.
+- CI uses a pinned Kujo runtime ref so the gate runs against a reproducible language/runtime build.
+- Unsupported output formats fail with exit `2` instead of silently falling back to Markdown.
+- ShipCheck reads local repository files and runs local Git commands; it does not call network services while scanning.
 
 ## Suggested Release Policy
 

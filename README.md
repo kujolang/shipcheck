@@ -11,6 +11,10 @@ It audits a local repository and produces:
 
 ShipCheck surfaces blockers and follow-up work; it does not certify a release or replace human review.
 
+## Positioning
+
+ShipCheck is a production-forward alpha: the CLI surface, JSON shape, and gate semantics are stable enough for local workflows and CI experimentation, and the project now passes its own release gate. It is not an enterprise certification engine yet. Treat it as a clear, deterministic readiness scanner that helps teams see missing release signals before humans make the final ship decision.
+
 ## Install / Quick Start
 
 Requirements:
@@ -31,6 +35,7 @@ Expected gate behavior:
 - `scan` prints findings without failing the command.
 - `gate` exits `1` when error-level checks fail.
 - `gate` exits `0` when only warnings or passing checks remain.
+- `gate --format json` emits valid JSON and still uses the exit code for pass/fail automation.
 
 ## Usage Examples
 
@@ -49,6 +54,12 @@ kujo run shipcheck.kujo gate --dir ../kujo-spec --format json
 
 Use `help` and `version`; standalone `--help` and `--version` aliases are not implemented in this wrapper.
 
+Unsupported output formats fail with exit `2`:
+
+```bash
+kujo run shipcheck.kujo scan --format yaml
+```
+
 ## Release-Readiness Capabilities
 
 - Scans repository health, code quality, documentation, and release metadata.
@@ -56,6 +67,7 @@ Use `help` and `version`; standalone `--help` and `--version` aliases are not im
 - Uses error vs warning severity so teams can gate on what matters.
 - Works fully offline on local repositories.
 - Produces structured JSON for automation and reporting systems.
+- Shell-quotes target directories before invoking Git subprocesses.
 
 ## Command Reference
 
@@ -110,11 +122,13 @@ kujo run shipcheck.kujo scan --dir . --format json > shipcheck-report.json
 
 Additional operational guidance is in [docs/operations.md](docs/operations.md).
 
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It builds a pinned Kujo runtime, runs the CLI contract test, and then runs ShipCheck's own scan and gate.
+
 ## Project Status
 
 Current release: `v0.1.0`
 
-ShipCheck is in early-stage maturity, but the command surface and gate behavior are verified enough for local developer workflows and CI experimentation.
+ShipCheck is in early-stage maturity, but its core command surface and gate behavior are covered by contract tests. Current self-scan status is 16/16 checks passing with zero warnings.
 
 ## Repository Layout
 
@@ -122,10 +136,11 @@ ShipCheck is in early-stage maturity, but the command surface and gate behavior 
 - `src/checks.kujo` individual release checks
 - `src/scan.kujo` scan orchestration
 - `src/report.kujo` markdown/json/checklist/release-note output
+- `.github/workflows/ci.yml` CI contract and self-gate workflow
 - `docs/` operational and check reference documentation
 - `AGENTS.md` contributor and agent guidance for canonical examples and search hygiene
 
-The example shell script under `examples/` expects the Kujo runtime to be available as `kujo` on `PATH`.
+The example shell script under `examples/` uses `KUJO_BIN` when set and otherwise expects the Kujo runtime to be available as `kujo` on `PATH`.
 
 ## Changelog
 

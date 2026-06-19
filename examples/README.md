@@ -2,7 +2,7 @@
 
 This directory contains canonical copy/paste command examples for common workflows.
 
-The shell-script example expects the Kujo runtime to be available as `kujo` on `PATH`.
+The shell-script example uses `KUJO_BIN` when set and otherwise expects `kujo` on `PATH`.
 
 Generated report artifacts such as `shipcheck-report.json` are intentionally not committed.
 
@@ -34,6 +34,12 @@ kujo run shipcheck.kujo checklist --dir .
 
 ```bash
 PATH=/path/to/kujo/target/release:$PATH bash examples/scan-local-and-external.sh
+```
+
+Or pass the runtime explicitly:
+
+```bash
+KUJO_BIN=/path/to/kujo/target/release/kujo bash examples/scan-local-and-external.sh
 ```
 
 Pass a repository path to override the default `../kujo-spec` external scan target:
