@@ -1,5 +1,9 @@
 # ShipCheck
 
+[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/shipcheck)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
+
 ShipCheck checks whether a local repo is ready enough to ship by running explicit release-readiness checks and reporting blockers.
 
 It audits a local repository and produces:
