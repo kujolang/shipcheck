@@ -60,6 +60,15 @@ The repository includes `.github/workflows/ci.yml`, which builds a pinned Kujo r
 - CI uses a pinned Kujo runtime ref so the gate runs against a reproducible language/runtime build.
 - Unsupported output formats fail with exit `2` instead of silently falling back to Markdown.
 - ShipCheck reads local repository files and runs local Git commands; it does not call network services while scanning.
+- The complete threat model, output-handling limits, and reporting guidance are
+  in [security.md](security.md).
+
+## JSON Compatibility
+
+Validate automation output against
+[`schemas/shipcheck-report.schema.json`](../schemas/shipcheck-report.schema.json)
+and follow [compatibility.md](compatibility.md) when upgrading or consuming a
+new report field.
 
 ## Suggested Release Policy
 

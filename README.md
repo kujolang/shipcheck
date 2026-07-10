@@ -1,6 +1,6 @@
 # ShipCheck
 
-[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/shipcheck)
+[![Version](https://img.shields.io/badge/version-0.1.0-black)](https://github.com/kujolang/shipcheck)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
@@ -99,6 +99,28 @@ Scan is informational: it can report findings without failing the command. Gate 
 
 This makes ShipCheck useful in CI merge/release workflows, with human review still needed for warnings and release decisions.
 
+## JSON Contract and Compatibility
+
+`scan --format json` and `gate --format json` conform to the versioned
+[JSON schema](schemas/shipcheck-report.schema.json). The schema is part of the
+public CLI contract for the current `0.1.x` line.
+
+ShipCheck makes additive changes to the JSON report only in backward-compatible
+releases. Renaming, removing, or changing the meaning/type of an existing field
+requires a documented breaking release and a schema-version update. Consumers
+should ignore unrecognized fields and rely on the command exit status plus
+`summary.gate_passed` for gate decisions.
+
+See [the compatibility policy](docs/compatibility.md) for the complete policy,
+including the experimental-maturity boundary.
+
+## Security and Limitations
+
+ShipCheck reads repository metadata and invokes local Git commands; it does not
+run project tests, inspect release artifacts, call network services, publish
+releases, or certify a project. Read the [threat model and security
+boundaries](docs/security.md) before using it against untrusted workspaces.
+
 ## Check Coverage
 
 ShipCheck runs 16 checks across 4 categories:
@@ -130,7 +152,7 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`
 
 ## Project Status
 
-Current release: `v0.1.0`
+Current release: `v0.1.0` (the current commit is intentionally untagged).
 
 ShipCheck is in early-stage maturity, but its core command surface and gate behavior are covered by contract tests. Current self-scan status is 16/16 checks passing with zero warnings.
 

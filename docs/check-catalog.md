@@ -49,3 +49,11 @@ ShipCheck currently runs 16 checks grouped into 4 categories.
 - Check implementations live in `src/checks.kujo`.
 - Report formatting and gate calculations live in `src/report.kujo`.
 - Gate behavior is intentionally conservative: only error-level failures block release.
+- The report contract is defined by
+  [`schemas/shipcheck-report.schema.json`](../schemas/shipcheck-report.schema.json).
+- A passing gate is evidence that these local metadata checks passed, not human
+  release certification or a security assessment.
+- The CLI contract suite exercises non-repository failure handling, hostile path
+  quoting, and representative Node and Kujo fixture repositories. The generic
+  checks deliberately report signals rather than infer that a project is safe,
+  production-ready, or publishable.
