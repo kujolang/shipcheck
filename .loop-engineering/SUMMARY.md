@@ -10,9 +10,9 @@ blocked
 
 ## Verification
 
-- passed: cli_contract, cli_contract, cli_contract
+- passed: kujo_checks, cli_contract, kujo_checks, cli_contract, kujo_checks, cli_contract
 - blocked: none
-- failed: kujo_checks, diff_check, kujo_checks, diff_check, kujo_checks, diff_check
+- failed: diff_check, diff_check, diff_check
 
 ## Commits
 

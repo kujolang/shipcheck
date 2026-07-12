@@ -1,12 +1,29 @@
 diff --git a/.loop-engineering/iterations/001/context.md b/.loop-engineering/iterations/001/context.md
-index 1af323d..7dc23f9 100644
+index 7dc23f9..8278172 100644
 --- a/.loop-engineering/iterations/001/context.md
 +++ b/.loop-engineering/iterations/001/context.md
 @@ -1,6 +1,6 @@
  # Context
  
  - objective: Evaluate HLP-004 migration to the first-party CLI parser package while preserving ShipCheck command, report, and exit-code contracts.
--- git_head: d993d4c
-+- git_head: bd46f7d
+-- git_head: bd46f7d
++- git_head: 31d8949
  - changed_files:
    - none
+diff --git a/.loop-engineering/iterations/001/diff.patch b/.loop-engineering/iterations/001/diff.patch
+index 67b1c8c..e69de29 100644
+--- a/.loop-engineering/iterations/001/diff.patch
++++ b/.loop-engineering/iterations/001/diff.patch
+@@ -1,12 +0,0 @@
+-diff --git a/.loop-engineering/iterations/001/context.md b/.loop-engineering/iterations/001/context.md
+-index 1af323d..7dc23f9 100644
+---- a/.loop-engineering/iterations/001/context.md
+-+++ b/.loop-engineering/iterations/001/context.md
+-@@ -1,6 +1,6 @@
+- # Context
+- 
+- - objective: Evaluate HLP-004 migration to the first-party CLI parser package while preserving ShipCheck command, report, and exit-code contracts.
+--- git_head: d993d4c
+-+- git_head: bd46f7d
+- - changed_files:
+-   - none
