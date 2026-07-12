@@ -17,7 +17,7 @@ blocked_actions:
 
 eval_gates:
   - id: kujo_checks
-    command: "for f in shipcheck.kujo src/*.kujo tests/*.kujo; do /Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo check \"$f\" >/dev/null || exit 1; done"
+    command: "for f in shipcheck.kujo src/*.kujo tests/*.kujo; do /Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo check $f >/dev/null || exit 1; done"
   - id: cli_contract
     command: "if [ -x tests/cli-output-contract.sh ]; then KUJO_BIN=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo bash tests/cli-output-contract.sh; else echo 'shipcheck has no shell contract runner'; fi"
   - id: diff_check
