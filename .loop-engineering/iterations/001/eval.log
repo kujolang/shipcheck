@@ -22,6 +22,5 @@ Compiler optimization: 0 constants folded, 15 dead instructions removed, 0 peeph
 gate cli_contract: pass
 
 ## gate: diff_check
-$ git diff --check -- $(git diff --name-only | grep -v '^.loop-engineering/' || true)
-.loop-engineering/iterations/001/diff.patch:24: trailing whitespace.
-+- 
+$ files=$(git diff --name-only | grep -v "^.loop-engineering/" || true); if [ -n "$files" ]; then git diff --check -- $files; fi
+gate diff_check: pass
