@@ -2,30 +2,30 @@
 
 ## Verdict
 
-not-run
+blocked
 
 ## Completed
 
-- none
+- configured loop run completed through iteration 3
 
 ## Verification
 
-- passed: none
+- passed: cli_contract, diff_check, cli_contract, diff_check, cli_contract, diff_check
 - blocked: none
-- failed: none
+- failed: kujo_checks, kujo_checks, kujo_checks
 
 ## Commits
 
-- none
+- Loop engineering: Evaluate HLP-004 migration to the first-party CLI parser package while preserving ShipCheck command, report, and exit-code contracts.
 
 ## Remaining
 
-- configure objective/checklist_file in loop.yml
+- none
 
 ## External Blockers
 
-- none
+- kujo-cli-module-distribution: Publish/install the first-party CLI module or add a supported module search path/package dependency, then migrate parser call sites and add parser parity tests.
 
 ## Next Start
 
-- scripts/run-workflow.sh --config .loop-engineering/loop.yml
+- repeated-failure: required gate failed 3 times
