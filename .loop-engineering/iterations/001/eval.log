@@ -1,7 +1,11 @@
 
 ## gate: kujo_checks
-$ for f in shipcheck.kujo src/*.kujo tests/*.kujo; do /Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo check \"$f\" >/dev/null || exit 1; done
-[KUJOCLI001] [cli] error: Failed to read .kujo file '"shipcheck.kujo"': No such file or directory (os error 2)
+$ for f in shipcheck.kujo src/*.kujo tests/*.kujo; do /Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo check $f >/dev/null || exit 1; done
+Compiler optimization: 0 constants folded, 15 dead instructions removed, 0 peephole optimizations
+Compiler optimization: 0 constants folded, 107 dead instructions removed, 0 peephole optimizations
+Compiler optimization: 0 constants folded, 19 dead instructions removed, 0 peephole optimizations
+Compiler optimization: 0 constants folded, 2 dead instructions removed, 0 peephole optimizations
+[KUJOCLI001] [cli] error: Failed to read .kujo file 'tests/*.kujo': No such file or directory (os error 2)
 
 ## gate: cli_contract
 $ if [ -x tests/cli-output-contract.sh ]; then KUJO_BIN=/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/debug/kujo bash tests/cli-output-contract.sh; else echo 'shipcheck has no shell contract runner'; fi
@@ -19,4 +23,5 @@ gate cli_contract: pass
 
 ## gate: diff_check
 $ git diff --check
-gate diff_check: pass
+.loop-engineering/iterations/001/diff.patch:7: trailing whitespace.
++ 
