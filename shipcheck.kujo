@@ -8,6 +8,8 @@
 #   kujo run shipcheck.kujo version
 #   kujo run shipcheck.kujo help
 
+from cli import parse_subcommand, flag_value
+
 VERSION := "0.1.0"
 
 func print_help() {
@@ -61,36 +63,6 @@ func print_lines(lines) {
 		print(lines[i])
 		i = i + 1
 	}
-}
-
-func parse_subcommand(argv) {
-	if len(argv) < 1 {
-		return ""
-	}
-	first := argv[0]
-	# Reject flags-as-subcommand
-	if starts_with(first, "-") == 1 {
-		return ""
-	}
-	return first
-}
-
-func flag_value(argv, flag, default_val) {
-	mut i := 0
-	while i < len(argv) {
-		if argv[i] == flag {
-			if i + 1 < len(argv) {
-				next := argv[i + 1]
-				if starts_with(next, "-") == 1 {
-					return "true"
-				}
-				return next
-			}
-			return "true"
-		}
-		i = i + 1
-	}
-	return default_val
 }
 
 func target_dir(argv) {
