@@ -8,6 +8,10 @@ shipcheck() {
 	"$KUJO_BIN" run "$ROOT/shipcheck.kujo" "$@"
 }
 
+shipcheck_output() {
+	shipcheck "$@" 2>&1 | sed '/^Compiler optimization:/d'
+}
+
 assert_output() {
 	local name="$1"
 	local expected="$2"
@@ -53,7 +57,7 @@ Examples:
   kujo run shipcheck.kujo gate
 EOF
 )"
-assert_output "help output" "$expected_help" "$(shipcheck help)"
+assert_output "help output" "$expected_help" "$(shipcheck_output help)"
 
 expected_version="$(cat <<'EOF'
 ShipCheck v0.1.0
@@ -61,9 +65,9 @@ A Kujo ecosystem dogfood showcase tool.
 Release-readiness scanner for local repositories.
 EOF
 )"
-assert_output "version output" "$expected_version" "$(shipcheck version)"
+assert_output "version output" "$expected_version" "$(shipcheck_output version)"
 
-json_output="$(shipcheck scan --dir "$ROOT" --format json)"
+json_output="$(shipcheck_output scan --dir "$ROOT" --format json)"
 JSON_OUTPUT="$json_output" ROOT="$ROOT" python3 - <<'PY'
 import json
 import os
@@ -82,7 +86,7 @@ assert len(data["checks"]) == 16
 assert data["summary"]["gate_passed"] in (0, 1)
 PY
 
-gate_json_output="$(shipcheck gate --dir "$ROOT" --format json)"
+gate_json_output="$(shipcheck_output gate --dir "$ROOT" --format json)"
 JSON_OUTPUT="$gate_json_output" ROOT="$ROOT" python3 - <<'PY'
 import json
 import os
@@ -96,7 +100,7 @@ assert data["summary"]["gate_passed"] == 1
 PY
 
 set +e
-bad_format_output="$(shipcheck scan --format yaml 2>&1)"
+bad_format_output="$(shipcheck_output scan --format yaml)"
 bad_format_status=$?
 set -e
 
@@ -111,7 +115,7 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 set +e
-shipcheck gate --dir "$tmpdir" >"$tmpdir/gate.out"
+shipcheck_output gate --dir "$tmpdir" >"$tmpdir/gate.out"
 gate_status=$?
 set -e
 
@@ -123,7 +127,7 @@ fi
 grep -q "Gate FAILED: Not all required checks passed." "$tmpdir/gate.out"
 
 set +e
-failed_gate_json="$(shipcheck gate --dir "$tmpdir" --format json)"
+failed_gate_json="$(shipcheck_output gate --dir "$tmpdir" --format json)"
 failed_gate_status=$?
 set -e
 
@@ -149,7 +153,7 @@ printf '0.0.1\n' >"$hostile_dir/VERSION"
 printf '# Changelog\n' >"$hostile_dir/CHANGELOG.md"
 mkdir -p "$hostile_dir/tests"
 
-hostile_json="$(shipcheck scan --dir "$hostile_dir" --format json)"
+hostile_json="$(shipcheck_output scan --dir "$hostile_dir" --format json)"
 if [[ -e "$tmpdir/shipcheck-pwned" ]]; then
 	printf '%s\n' "FAILED: scan executed shell metacharacters from --dir" >&2
 	exit 1
@@ -167,7 +171,7 @@ assert data["dir"] == os.environ["HOSTILE_DIR"]
 assert any(check["name"] == "git-repo" and check["passed"] == 1 for check in data["checks"])
 PY
 
-shipcheck release-note --dir "$hostile_dir" >"$tmpdir/release-note.out"
+shipcheck_output release-note --dir "$hostile_dir" >"$tmpdir/release-note.out"
 if [[ -e "$tmpdir/shipcheck-pwned" ]]; then
 	printf '%s\n' "FAILED: release-note executed shell metacharacters from --dir" >&2
 	exit 1
@@ -184,7 +188,7 @@ printf '# Node Fixture\n\n## Install\n\n## Usage\n' >"$node_dir/README.md"
 printf '{"name":"node-fixture","version":"0.0.1","scripts":{"lint":"echo lint","format":"echo format"}}\n' >"$node_dir/package.json"
 printf '# Changelog\n' >"$node_dir/CHANGELOG.md"
 printf 'test fixture\n' >"$node_dir/tests/example.test.js"
-node_json="$(shipcheck gate --dir "$node_dir" --format json)"
+node_json="$(shipcheck_output gate --dir "$node_dir" --format json)"
 JSON_OUTPUT="$node_json" ROOT="$ROOT" python3 - <<'PY'
 import json
 import os
@@ -207,7 +211,7 @@ printf 'example\n' >"$kujo_dir/examples/basic.kujo"
 printf 'docs\n' >"$kujo_dir/docs/usage.md"
 printf '[package]\nname = "kujo-fixture"\nversion = "0.0.1"\ndescription = "fixture"\nlicense = "MIT"\n[kujo]\nentry = "main.kujo"\n' >"$kujo_dir/kennel.toml"
 printf 'func main() {}\n' >"$kujo_dir/main.kujo"
-kujo_json="$(shipcheck gate --dir "$kujo_dir" --format json)"
+kujo_json="$(shipcheck_output gate --dir "$kujo_dir" --format json)"
 JSON_OUTPUT="$kujo_json" ROOT="$ROOT" python3 - <<'PY'
 import json
 import os
