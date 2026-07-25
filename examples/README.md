@@ -36,10 +36,10 @@ kujo run shipcheck.kujo checklist --dir .
 PATH=kujo:$PATH bash examples/scan-local-and-external.sh
 ```
 
-Or pass the runtime explicitly:
+Or pass a non-default runtime explicitly:
 
 ```bash
-KUJO_BIN=kujo bash examples/scan-local-and-external.sh
+KUJO_BIN=/path/to/kujo bash examples/scan-local-and-external.sh
 ```
 
 Pass a repository path to override the default `../kujo-spec` external scan target:

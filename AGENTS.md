@@ -37,10 +37,10 @@ For repeated static CLI output, prefer a small local `print_lines([...])` helper
 
 ## Validation
 
-If `kujo` is not on `PATH`, set `KUJO_BIN` to the local runtime path before running tests:
+Run the CLI output contract with `kujo` on `PATH`:
 
 ```bash
-KUJO_BIN=kujo tests/cli-output-contract.sh
+tests/cli-output-contract.sh
 ```
 
 Run focused checks for touched Kujo files, then run the CLI contract test and ShipCheck's own scan/gate smoke checks.
