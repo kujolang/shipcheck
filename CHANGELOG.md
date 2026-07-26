@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added launch-readiness Spec and Eval metadata for the Kujo prelaunch review.
 - Reconciled the public version badge with the `0.1.0` manifests and CLI.
 - Added a versioned JSON report schema, schema-validation contract coverage,
   compatibility policy, and security/threat-model documentation.

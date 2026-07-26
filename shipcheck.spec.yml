@@ -1,21 +1,51 @@
 name: shipcheck
 id: 3e8f0183-6e58-4a35-9735-9f82a7ff13c0
 version: 0.1.0
-status: in-progress
+status: local-release-review
 priority: high
+
+background: >
+  ShipCheck is part of the Kujo prelaunch supporting-tooling matrix. The
+  verified scope is local repository readiness scanning and CI-style gate
+  reporting; it surfaces release blockers and review items but does not
+  certify a release.
 
 goal: >
   Provide a local release-readiness scanner for Kujo ecosystem repositories,
   with deterministic markdown/json output and CI-friendly gate behavior.
 
-scope:
-  - scan repository health, docs quality, and release metadata signals
-  - emit markdown and json reports
-  - provide checklist and gate commands for release workflows
+scope: >
+  Scan repository health, docs quality, and release metadata signals; emit
+  markdown and JSON reports; provide checklist and gate commands for release
+  workflows; and keep local launch proof current through the CLI contract, self
+  scan/gate, Eval, Concord, ChangeBucket, and PatchBrief evidence.
 
 non_goals:
   - network services or hosted dashboards
   - automatic source modification
+  - package publishing or public release creation
+  - final release tags
+  - release certification, signing, notarization, or enterprise governance claims without target-environment proof
+
+relevant_systems:
+  - Kujo runtime
+  - Git
+  - ShipCheck CLI
+  - JSON report schema
+  - prelaunch launch evidence packet
+
+likely_files:
+  - README.md
+  - shipcheck.kujo
+  - src/checks.kujo
+  - src/scan.kujo
+  - src/report.kujo
+  - docs/check-catalog.md
+  - docs/operations.md
+  - docs/security.md
+  - schemas/shipcheck-report.schema.json
+  - tests/cli-output-contract.sh
+  - tests/shipcheck_eval.json
 
 acceptance_criteria:
   - "kujo run shipcheck.kujo -- scan returns a markdown report"
@@ -24,8 +54,54 @@ acceptance_criteria:
   - "kujo run shipcheck.kujo -- gate exits non-zero when error checks fail"
   - "kujo run shipcheck.kujo -- help returns usage guidance"
   - "ShipCheck can scan itself and at least one external local repository"
+  - "CLI output contract passes locally"
+  - "ShipCheck self gate passes with summary.gate_passed = 1"
+  - "Docs keep human release decision and certification boundaries explicit"
+
+eval_requirements:
+  - description: "ShipCheck scan markdown succeeds"
+    check_type: "output_contains"
+    params:
+      command: "kujo run shipcheck.kujo scan --dir ."
+      expected: "# ShipCheck Release-Readiness Report"
+  - description: "ShipCheck gate JSON reports a passing gate"
+    check_type: "command_stdout_json_path_equals"
+    params:
+      command: "kujo run shipcheck.kujo gate --dir . --format json"
+      json_path: "summary.gate_passed"
+      expected: 1
+  - description: "ShipCheck CLI contract succeeds"
+    check_type: "command_succeeds"
+    params:
+      command: "tests/cli-output-contract.sh"
+
+risks:
+  - risk: "ShipCheck is a release-readiness signal scanner, not a release certification engine."
+    mitigation: "Keep docs and launch evidence explicit that final release decisions require human review and target-environment proof."
+    severity: "high"
+  - risk: "Check catalog may miss project-specific release requirements."
+    mitigation: "Use ShipCheck as a baseline gate and add repo-specific release gates for target projects."
+    severity: "medium"
+  - risk: "Git metadata and local filesystem state affect findings."
+    mitigation: "Capture branch, commit, exact commands, and JSON evidence for every launch proof."
+    severity: "medium"
+
+dependencies:
+  - Kujo runtime on PATH
+  - Git on PATH
+  - Bash 3.2+
 
 review_expectations:
   - command surface remains stable and documented in README
   - check definitions stay aligned with docs/check-catalog.md
   - gate semantics remain deterministic for CI usage
+
+human_approval_points:
+  - before publishing packages or public releases
+  - before pushing final release tags
+  - before treating ShipCheck output as release certification or enterprise governance proof
+
+tags:
+  - kujo
+  - shipcheck
+  - launch-readiness
