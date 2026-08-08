@@ -1,6 +1,6 @@
 [package]
 name = "shipcheck"
-version = "0.1.0"
+version = "1.0.0"
 description = "Release-readiness scanner for Kujo ecosystem projects. Inspects a repository and produces structured reports, checklists, and release gate validation."
 license = "MIT"
 authors = ["Kujolang <me@kujolang.ai>"]
@@ -10,10 +10,10 @@ categories = ["developer-tools"]
 readme = "README.md"
 
 [package.status]
-stage = "experimental"
-stability = "early"
-public_api = false
-notes = "Production-forward alpha with stable scan/gate workflows for local and CI usage."
+stage = "production"
+stability = "stable"
+public_api = true
+notes = "Stable deterministic scan, checklist, gate, release-note, Markdown, and JSON contracts for local and CI usage."
 
 [kujo]
 minimum_version = "0.1.0"

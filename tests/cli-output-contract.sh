@@ -25,7 +25,7 @@ assert_output() {
 }
 
 expected_help="$(cat <<'EOF'
-ShipCheck v0.1.0
+ShipCheck v1.0.0
 
 A local developer tool that inspects a repository and produces
 a release-readiness report.
@@ -60,7 +60,7 @@ EOF
 assert_output "help output" "$expected_help" "$(shipcheck_output help)"
 
 expected_version="$(cat <<'EOF'
-ShipCheck v0.1.0
+ShipCheck v1.0.0
 A Kujo ecosystem dogfood showcase tool.
 Release-readiness scanner for local repositories.
 EOF
@@ -80,7 +80,7 @@ assert set(schema["required"]).issubset(data)
 assert set(schema["properties"]["summary"]["required"]).issubset(data["summary"])
 assert all(set(schema["properties"]["checks"]["items"]["required"]).issubset(check) for check in data["checks"])
 assert data["tool"] == "shipcheck"
-assert data["version"] == "0.1.0"
+assert data["version"] == "1.0.0"
 assert data["summary"]["total_checks"] == 16
 assert len(data["checks"]) == 16
 assert data["summary"]["gate_passed"] in (0, 1)

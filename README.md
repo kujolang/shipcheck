@@ -1,6 +1,6 @@
 # ShipCheck
 
-[![Version](https://img.shields.io/badge/version-0.1.0-black)](https://github.com/kujolang/shipcheck)
+[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/shipcheck)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
@@ -103,7 +103,7 @@ This makes ShipCheck useful in CI merge/release workflows, with human review sti
 
 `scan --format json` and `gate --format json` conform to the versioned
 [JSON schema](schemas/shipcheck-report.schema.json). The schema is part of the
-public CLI contract for the current `0.1.x` line.
+public CLI contract for the current `1.x` line.
 
 ShipCheck makes additive changes to the JSON report only in backward-compatible
 releases. Renaming, removing, or changing the meaning/type of an existing field
@@ -112,7 +112,7 @@ should ignore unrecognized fields and rely on the command exit status plus
 `summary.gate_passed` for gate decisions.
 
 See [the compatibility policy](docs/compatibility.md) for the complete policy,
-including the experimental-maturity boundary.
+including the stable compatibility boundary.
 
 ## Security and Limitations
 
@@ -152,9 +152,9 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`
 
 ## Project Status
 
-Current release: `v0.1.0` (the current commit is intentionally untagged).
+Current release: `v1.0.0`.
 
-ShipCheck is in early-stage maturity, but its core command surface and gate behavior are covered by contract tests. Current self-scan status is 16/16 checks passing with zero warnings.
+ShipCheck 1.0 has a stable core command surface and gate behavior covered by contract tests. Current self-scan status is 16/16 checks passing with zero warnings.
 
 ## Repository Layout
 
