@@ -67,6 +67,15 @@ EOF
 )"
 assert_output "version output" "$expected_version" "$(shipcheck_output version)"
 
+scan_markdown_output="$(shipcheck_output scan --dir "$ROOT")"
+grep -q '^# ShipCheck Release-Readiness Report$' <<<"$scan_markdown_output"
+grep -q '\*\*Gate\*\* | \*\*PASSED\*\*' <<<"$scan_markdown_output"
+
+checklist_output="$(shipcheck_output checklist --dir "$ROOT")"
+grep -q '^# Release Checklist$' <<<"$checklist_output"
+grep -q '^## Current State (from ShipCheck scan)$' <<<"$checklist_output"
+grep -q '^\[PASS\] Git repository detected$' <<<"$checklist_output"
+
 json_output="$(shipcheck_output scan --dir "$ROOT" --format json)"
 JSON_OUTPUT="$json_output" ROOT="$ROOT" python3 - <<'PY'
 import json
@@ -110,6 +119,23 @@ if [[ "$bad_format_status" -ne 2 ]]; then
 fi
 
 grep -q "Unsupported format: yaml" <<<"$bad_format_output"
+
+set +e
+missing_dir_output="$(shipcheck_output scan --dir)"
+missing_dir_status=$?
+missing_format_output="$(shipcheck_output scan --format)"
+missing_format_status=$?
+unknown_output="$(shipcheck_output unknown)"
+unknown_status=$?
+set -e
+
+if [[ "$missing_dir_status" -ne 2 || "$missing_format_status" -ne 2 || "$unknown_status" -ne 2 ]]; then
+	printf '%s\n' "FAILED: malformed CLI input should exit 2" >&2
+	exit 1
+fi
+grep -q "Missing value for --dir" <<<"$missing_dir_output"
+grep -q "Missing value for --format" <<<"$missing_format_output"
+grep -q "Unknown subcommand: unknown" <<<"$unknown_output"
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT

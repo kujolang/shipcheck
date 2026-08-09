@@ -107,6 +107,21 @@ func output_format(argv) {
 	exit(2)
 }
 
+func validate_flag_values(argv) {
+	mut i := 0
+	while i < len(argv) {
+		token := to_string(argv[i])
+		if token == "--dir" || token == "--format" {
+			next_index := i + 1
+			if next_index >= len(argv) || starts_with(to_string(argv[next_index]), "--") {
+				print("Error: Missing value for " + token)
+				exit(2)
+			}
+		}
+		i = i + 1
+	}
+}
+
 # --- Main ---
 
 func main() {
@@ -123,6 +138,7 @@ func main() {
 		exit(0)
 	}
 
+	validate_flag_values(argv)
 	dir := target_dir(argv)
 
 	# Validate target directory
