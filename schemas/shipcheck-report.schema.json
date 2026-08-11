@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kujolang/shipcheck/schemas/shipcheck-report-0.1.json",
+  "$id": "https://github.com/kujolang/shipcheck/schemas/shipcheck-report-1.0.json",
   "title": "ShipCheck JSON report",
   "type": "object",
   "required": ["tool", "version", "dir", "project_type", "summary", "checks"],
   "properties": {
     "tool": { "const": "shipcheck" },
-    "version": { "type": "string", "pattern": "^0\\.1\\.\\d+$" },
+    "version": { "type": "string", "pattern": "^1\\.\\d+\\.\\d+$" },
     "dir": { "type": "string" },
     "project_type": { "type": "string" },
     "summary": {

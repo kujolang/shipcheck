@@ -108,17 +108,37 @@ func output_format(argv) {
 }
 
 func validate_flag_values(argv) {
-	mut i := 0
+	mut i := 1
 	while i < len(argv) {
 		token := to_string(argv[i])
 		if token == "--dir" || token == "--format" {
+			if token == "--format" && argv[0] != "scan" && argv[0] != "gate" {
+				print("Error: Unsupported option for " + argv[0] + ": " + token)
+				exit(2)
+			}
 			next_index := i + 1
 			if next_index >= len(argv) || starts_with(to_string(argv[next_index]), "--") {
 				print("Error: Missing value for " + token)
 				exit(2)
 			}
+			i = i + 2
+			continue
 		}
-		i = i + 1
+		if starts_with(token, "--dir=") || starts_with(token, "--format=") {
+			if starts_with(token, "--format=") && argv[0] != "scan" && argv[0] != "gate" {
+				print("Error: Unsupported option for " + argv[0] + ": --format")
+				exit(2)
+			}
+			parts := split(token, "=")
+			if len(parts) < 2 || trim(parts[1]) == "" {
+				print("Error: Missing value for " + parts[0])
+				exit(2)
+			}
+			i = i + 1
+			continue
+		}
+		print("Error: Unknown option: " + token)
+		exit(2)
 	}
 }
 
@@ -136,6 +156,14 @@ func main() {
 	if subcommand == "version" {
 		print_version()
 		exit(0)
+	}
+
+	if subcommand != "scan" && subcommand != "checklist" && subcommand != "gate" && subcommand != "release-note" {
+		print_lines([
+			"Error: Unknown subcommand: " + subcommand,
+			"Run 'kujo run shipcheck.kujo help' for usage."
+		])
+		exit(2)
 	}
 
 	validate_flag_values(argv)
@@ -201,11 +229,6 @@ func main() {
 		exit(0)
 	}
 
-	print_lines([
-		"Error: Unknown subcommand: " + subcommand,
-		"Run 'kujo run shipcheck.kujo help' for usage."
-	])
-	exit(2)
 }
 
 main()

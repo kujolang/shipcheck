@@ -108,7 +108,10 @@ export func check_tests(dir) {
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
 		if path_is_dir(p) == true {
-			return ok("tests-exist", "Test directory found: " + paths[i], "")
+			entries := list_dir(p)
+			if len(entries) > 0 {
+				return ok("tests-exist", "Test directory found: " + paths[i], "")
+			}
 		}
 		i = i + 1
 	}
@@ -143,7 +146,12 @@ export func check_ci_config(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true || path_is_dir(p) == true {
+		if path_is_dir(p) == true {
+			entries := list_dir(p)
+			if len(entries) > 0 {
+				return ok("ci-config", "CI configuration found: " + paths[i], "")
+			}
+		} else if file_exists(p) == true {
 			return ok("ci-config", "CI configuration found: " + paths[i], "")
 		}
 		i = i + 1
@@ -196,7 +204,11 @@ export func check_examples(dir) {
 	# Check for demo directory
 	demo_path := join_path(dir, "demo")
 	if path_is_dir(demo_path) == true {
-		return ok("examples", "Demo directory found", "")
+		entries := list_dir(demo_path)
+		if len(entries) > 0 {
+			return ok("examples", "Demo directory found", "")
+		}
+		return warn("examples", "Demo directory exists but is empty", "Add example files")
 	}
 	return warn("examples", "No examples/ or demo/ directory found", "Add examples to help users get started")
 }
@@ -220,27 +232,32 @@ export func check_version_metadata(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
 	if file_exists(kennel_path) == true {
 		content := read_file(kennel_path)
-		if contains(content, "version") == 1 {
+		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "kennel.toml found with version field", "")
 		}
-		return warn("version-metadata", "kennel.toml found but no version field detected", "Add 'version' to [package] section")
+		return fail("version-metadata", "kennel.toml found but no package version detected", "Add 'version' to [package] section")
 	}
 	# Check VERSION file
 	version_path := join_path(dir, "VERSION")
 	if file_exists(version_path) == true {
 		ver := trim(read_file(version_path))
-		return ok("version-metadata", "VERSION file found: " + ver, "")
+		if ver != "" {
+			return ok("version-metadata", "VERSION file found: " + ver, "")
+		}
 	}
 	# Check package.json
 	pkg_json := join_path(dir, "package.json")
 	if file_exists(pkg_json) == true {
-		return ok("version-metadata", "package.json found (may contain version)", "")
+		content := read_file(pkg_json)
+		if json_field_value(content, "version") != "" {
+			return ok("version-metadata", "package.json found with version field", "")
+		}
 	}
 	# Check Cargo.toml
 	cargo_path := join_path(dir, "Cargo.toml")
 	if file_exists(cargo_path) == true {
 		content := read_file(cargo_path)
-		if contains(content, "version") == 1 {
+		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "Cargo.toml found with version field", "")
 		}
 	}
@@ -268,16 +285,16 @@ export func check_kennel_manifest(dir) {
 	}
 	content := read_file(kennel_path)
 	missing := ""
-	if contains(content, "name") == 0 {
+	if toml_value(content, "package", "name") == "" {
 		missing = missing + "name "
 	}
-	if contains(content, "version") == 0 {
+	if toml_value(content, "package", "version") == "" {
 		missing = missing + "version "
 	}
-	if contains(content, "description") == 0 {
+	if toml_value(content, "package", "description") == "" {
 		missing = missing + "description "
 	}
-	if contains(content, "license") == 0 {
+	if toml_value(content, "package", "license") == "" {
 		missing = missing + "license "
 	}
 	if missing == "" {
@@ -331,6 +348,77 @@ func find_readme(dir) {
 
 func shell_quote(value) {
 	return "'" + replace(value, "'", "'\"'\"'") + "'"
+}
+
+func toml_value(content, section, key) {
+	lines_list := split(content, "\n")
+	mut current_section := ""
+	mut i := 0
+	while i < len(lines_list) {
+		line := trim(lines_list[i])
+		if starts_with(line, "[") && ends_with(line, "]") {
+			current_section = trim(substring(line, 1, len(line) - 1))
+		} else if current_section == section && !starts_with(line, "#") && contains(line, "=") {
+			parts := split(line, "=")
+			if len(parts) >= 2 && trim(parts[0]) == key {
+				value := clean_toml_value(parts[1])
+				if value != "" {
+					return value
+				}
+			}
+		}
+		i = i + 1
+	}
+	return ""
+}
+
+func clean_toml_value(raw) {
+	value := trim(raw)
+	if value == "" {
+		return ""
+	}
+	first := substring(value, 0, 1)
+	if first == "\"" || first == "'" {
+		mut i := 1
+		while i < len(value) {
+			if substring(value, i, i + 1) == first {
+				return substring(value, 1, i)
+			}
+			i = i + 1
+		}
+		return ""
+	}
+	comment_index := index_of(value, "#")
+	if comment_index >= 0 {
+		value = trim(substring(value, 0, comment_index))
+	}
+	return value
+}
+
+func json_field_value(content, field) {
+	parsed := null
+	parse_error := null
+	try {
+		parsed = parse_json(content)
+	} except e {
+		parse_error = e
+	}
+	if type(parse_error) != "null" || type(parsed) != "dict" {
+		return ""
+	}
+	field_names := keys(parsed)
+	mut i := 0
+	while i < len(field_names) {
+		if field_names[i] == field {
+			value := parsed[field]
+			if type(value) == "string" {
+				return trim(value)
+			}
+			return ""
+		}
+		i = i + 1
+	}
+	return ""
 }
 
 func detect_command(dir, cmd_category, keywords) {
@@ -418,20 +506,9 @@ export func detect_version(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
 	if file_exists(kennel_path) == true {
 		content := read_file(kennel_path)
-		lines_list := split(content, "\n")
-		mut i := 0
-		while i < len(lines_list) {
-			line := lines_list[i]
-			if contains(line, "version") == 1 && contains(line, "=") == 1 {
-				parts := split(line, "=")
-				if len(parts) >= 2 {
-					ver := trim(replace(trim(parts[1]), "\"", ""))
-					if ver != "" {
-						return ver
-					}
-				}
-			}
-			i = i + 1
+		ver := toml_value(content, "package", "version")
+		if ver != "" {
+			return ver
 		}
 	}
 	# Try VERSION file

@@ -12,6 +12,9 @@ shipcheck_output() {
 	shipcheck "$@" 2>&1 | sed '/^Compiler optimization:/d'
 }
 
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
 assert_output() {
 	local name="$1"
 	local expected="$2"
@@ -80,11 +83,13 @@ json_output="$(shipcheck_output scan --dir "$ROOT" --format json)"
 JSON_OUTPUT="$json_output" ROOT="$ROOT" python3 - <<'PY'
 import json
 import os
+import re
 from pathlib import Path
 
 data = json.loads(os.environ["JSON_OUTPUT"])
 schema = json.loads((Path(os.environ["ROOT"]) / "schemas" / "shipcheck-report.schema.json").read_text())
-assert schema["$id"].endswith("shipcheck-report-0.1.json")
+assert schema["$id"].endswith("shipcheck-report-1.0.json")
+assert re.fullmatch(schema["properties"]["version"]["pattern"], data["version"])
 assert set(schema["required"]).issubset(data)
 assert set(schema["properties"]["summary"]["required"]).issubset(data["summary"])
 assert all(set(schema["properties"]["checks"]["items"]["required"]).issubset(check) for check in data["checks"])
@@ -106,6 +111,81 @@ schema = json.loads((Path(os.environ["ROOT"]) / "schemas" / "shipcheck-report.sc
 assert set(schema["required"]).issubset(data)
 assert data["tool"] == "shipcheck"
 assert data["summary"]["gate_passed"] == 1
+PY
+
+# Regression coverage for ten confirmed false-positive and CLI contract bugs.
+set +e
+unknown_option_output="$(shipcheck_output scan --bogus)"
+unknown_option_status=$?
+unknown_with_bad_dir_output="$(shipcheck_output unknown --dir "$ROOT/does-not-exist")"
+unknown_with_bad_dir_status=$?
+unsupported_option_output="$(shipcheck_output checklist --format json)"
+unsupported_option_status=$?
+set -e
+
+if [[ "$unknown_option_status" -ne 2 || "$unknown_with_bad_dir_status" -ne 2 || "$unsupported_option_status" -ne 2 ]]; then
+	printf '%s\n' "FAILED: invalid CLI options and commands should exit 2" >&2
+	exit 1
+fi
+grep -q "Unknown option: --bogus" <<<"$unknown_option_output"
+grep -q "Unknown subcommand: unknown" <<<"$unknown_with_bad_dir_output"
+grep -q "Unsupported option for checklist: --format" <<<"$unsupported_option_output"
+
+empty_signals_dir="$tmpdir/empty-signals"
+mkdir -p "$empty_signals_dir/tests" "$empty_signals_dir/demo" "$empty_signals_dir/.github/workflows"
+empty_signals_json="$(shipcheck_output scan --dir "$empty_signals_dir" --format json)"
+JSON_OUTPUT="$empty_signals_json" python3 - <<'PY'
+import json
+import os
+
+checks = {check["name"]: check for check in json.loads(os.environ["JSON_OUTPUT"])["checks"]}
+assert checks["tests-exist"]["passed"] == 0
+assert checks["tests-exist"]["severity"] == "error"
+assert checks["examples"]["passed"] == 0
+assert checks["ci-config"]["passed"] == 0
+PY
+
+package_without_version_dir="$tmpdir/package-without-version"
+mkdir -p "$package_without_version_dir"
+printf '{"name":"missing-version","dependencies":{"version":"9.9.9"}}\n' >"$package_without_version_dir/package.json"
+package_without_version_json="$(shipcheck_output scan --dir "$package_without_version_dir" --format json)"
+JSON_OUTPUT="$package_without_version_json" python3 - <<'PY'
+import json
+import os
+
+checks = {check["name"]: check for check in json.loads(os.environ["JSON_OUTPUT"])["checks"]}
+assert checks["version-metadata"]["passed"] == 0
+assert checks["version-metadata"]["severity"] == "error"
+PY
+
+empty_version_dir="$tmpdir/empty-version"
+mkdir -p "$empty_version_dir"
+: >"$empty_version_dir/VERSION"
+empty_version_json="$(shipcheck_output scan --dir "$empty_version_dir" --format json)"
+JSON_OUTPUT="$empty_version_json" python3 - <<'PY'
+import json
+import os
+
+checks = {check["name"]: check for check in json.loads(os.environ["JSON_OUTPUT"])["checks"]}
+assert checks["version-metadata"]["passed"] == 0
+PY
+
+misleading_kennel_dir="$tmpdir/misleading-kennel"
+mkdir -p "$misleading_kennel_dir"
+printf '[package]\n# version = "9.9.9"\n[metadata]\nname = "fake"\nversion = "9.9.9"\ndescription = "fake"\nlicense = "MIT"\n' >"$misleading_kennel_dir/kennel.toml"
+misleading_kennel_json="$(shipcheck_output scan --dir "$misleading_kennel_dir" --format json)"
+JSON_OUTPUT="$misleading_kennel_json" python3 - <<'PY'
+import json
+import os
+
+checks = {check["name"]: check for check in json.loads(os.environ["JSON_OUTPUT"])["checks"]}
+assert checks["version-metadata"]["passed"] == 0
+assert checks["version-metadata"]["severity"] == "error"
+assert checks["kennel-manifest"]["passed"] == 0
+assert "name" in checks["kennel-manifest"]["message"]
+assert "version" in checks["kennel-manifest"]["message"]
+assert "description" in checks["kennel-manifest"]["message"]
+assert "license" in checks["kennel-manifest"]["message"]
 PY
 
 set +e
@@ -136,9 +216,6 @@ fi
 grep -q "Missing value for --dir" <<<"$missing_dir_output"
 grep -q "Missing value for --format" <<<"$missing_format_output"
 grep -q "Unknown subcommand: unknown" <<<"$unknown_output"
-
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
 
 set +e
 shipcheck_output gate --dir "$tmpdir" >"$tmpdir/gate.out"
