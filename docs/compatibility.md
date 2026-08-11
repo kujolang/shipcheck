@@ -3,7 +3,7 @@
 ## Scope
 
 This policy covers the CLI commands and JSON report emitted by ShipCheck
-`0.1.x`. ShipCheck remains an experimental, local-first tool; this policy does
+`1.x`. ShipCheck remains a local-first tool; this policy does
 not represent a release certification or a promise of hosted-service support.
 
 ## JSON reports
@@ -31,5 +31,5 @@ unknown commands return `2`.
 
 ## Upgrade practice
 
-Review the changelog and schema diff before upgrading. Pin a tested `0.1.x`
-revision in automation until ShipCheck has a tagged stable release.
+Review the changelog and schema diff before upgrading. Pin a tested `1.x`
+release in automation.

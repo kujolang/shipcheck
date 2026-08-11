@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- Reject unknown and command-incompatible CLI options, and report unknown commands before validating their arguments.
+- Stop treating empty test, demo, and CI directories as implemented release signals.
+- Require real version metadata in `package.json`, non-empty `VERSION` files, and the TOML `[package]` section.
+- Validate required `kennel.toml` fields in `[package]` instead of matching unrelated text.
+- Align the public JSON schema identifier and version pattern with ShipCheck 1.x output.
+
 ## [1.0.0] - 2026-08-08
 
 - Added launch-readiness Spec and Eval metadata for the Kujo prelaunch review.
