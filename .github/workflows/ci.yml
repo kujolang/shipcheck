@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   contract:
     runs-on: ubuntu-latest
@@ -44,6 +47,16 @@ jobs:
         run: |
           set -euo pipefail
           KUJO_BIN="$KUJO_BIN" tests/cli-output-contract.sh
+
+      - name: Validate source and hardening contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source in shipcheck.kujo src/*.kujo; do
+            "$KUJO_BIN" check "$source"
+            "$KUJO_BIN" lint "$source"
+          done
+          KUJO_BIN="$KUJO_BIN" python3 tests/hardening-contract.py
 
       - name: Run ShipCheck self scan and gate
         shell: bash

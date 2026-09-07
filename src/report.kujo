@@ -1,3 +1,5 @@
+from src.display import display_text
+
 # src/report.kujo — Report generation for ShipCheck results.
 #
 # Produces Markdown reports, JSON reports, release checklists, and release note drafts.
@@ -11,7 +13,7 @@ export func report_markdown(results) {
 	print_lines([
 		"# ShipCheck Release-Readiness Report",
 		"",
-		"**Directory:** " + dir,
+		"**Directory:** " + display_text(dir),
 		"**Project type:** " + project_type,
 		""
 	])
@@ -92,7 +94,7 @@ export func generate_checklist(results) {
 	print_lines([
 		"# Release Checklist",
 		"",
-		"**Repository:** " + dir,
+		"**Repository:** " + display_text(dir),
 		""
 	])
 
@@ -131,7 +133,7 @@ export func generate_checklist(results) {
 	mut i := 0
 	while i < len(checks) {
 		c := checks[i]
-		print(status_icon(c) + " " + c["message"])
+		print(status_icon(c) + " " + display_text(c["message"]))
 		i = i + 1
 	}
 }
@@ -140,15 +142,22 @@ export func generate_release_note(results, version) {
 	dir := results["dir"]
 
 	print_lines([
-		"# Release Notes — v" + version,
+		"# Release Notes — v" + display_text(version),
 		"",
-		"**Repository:** " + dir,
+		"**Repository:** " + display_text(dir),
 		""
 	])
 
-	result := execute_status("git -C " + shell_quote(dir) + " log --oneline -20 2>/dev/null")
+	result := execute_status("git -C " + shell_quote(dir) + " log --no-color --oneline -20 2>/dev/null")
 	if result.exitcode == 0 && result.stdout != "" {
-		print_lines(["## Recent Commits", "", "```", trim(result.stdout), "```", ""])
+		print_lines(["## Recent Commits", "", "```"])
+		commit_lines := split(trim(result.stdout), "\n")
+		mut i := 0
+		while i < len(commit_lines) {
+			print(display_text(commit_lines[i]))
+			i = i + 1
+		}
+		print_lines(["```", ""])
 	}
 
 	print_lines([
@@ -270,7 +279,7 @@ func print_checks(all_checks, names) {
 	while i < len(names) {
 		name := names[i]
 		c := find_check(all_checks, name)
-		print("- " + status_icon(c) + " " + c["message"])
+		print("- " + status_icon(c) + " " + display_text(c["message"]))
 		i = i + 1
 	}
 }

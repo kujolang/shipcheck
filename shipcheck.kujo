@@ -8,6 +8,8 @@
 #   kujo run shipcheck.kujo version
 #   kujo run shipcheck.kujo help
 
+from src.display import display_text
+
 VERSION := "1.0.0"
 
 func print_help() {
@@ -103,7 +105,7 @@ func output_format(argv) {
 	if format == "markdown" || format == "json" {
 		return format
 	}
-	print("Error: Unsupported format: " + format + " (expected markdown or json)")
+	print("Error: Unsupported format: " + display_text(format) + " (expected markdown or json)")
 	exit(2)
 }
 
@@ -113,12 +115,12 @@ func validate_flag_values(argv) {
 		token := to_string(argv[i])
 		if token == "--dir" || token == "--format" {
 			if token == "--format" && argv[0] != "scan" && argv[0] != "gate" {
-				print("Error: Unsupported option for " + argv[0] + ": " + token)
+				print("Error: Unsupported option for " + display_text(argv[0]) + ": " + display_text(token))
 				exit(2)
 			}
 			next_index := i + 1
-			if next_index >= len(argv) || starts_with(to_string(argv[next_index]), "--") {
-				print("Error: Missing value for " + token)
+			if next_index >= len(argv) || trim(to_string(argv[next_index])) == "" || starts_with(to_string(argv[next_index]), "--") {
+				print("Error: Missing value for " + display_text(token))
 				exit(2)
 			}
 			i = i + 2
@@ -126,18 +128,18 @@ func validate_flag_values(argv) {
 		}
 		if starts_with(token, "--dir=") || starts_with(token, "--format=") {
 			if starts_with(token, "--format=") && argv[0] != "scan" && argv[0] != "gate" {
-				print("Error: Unsupported option for " + argv[0] + ": --format")
+				print("Error: Unsupported option for " + display_text(argv[0]) + ": --format")
 				exit(2)
 			}
-			parts := split(token, "=")
-			if len(parts) < 2 || trim(parts[1]) == "" {
-				print("Error: Missing value for " + parts[0])
+			option := split(token, "=")[0]
+			if trim(substring(token, len(option) + 1, len(token))) == "" {
+				print("Error: Missing value for " + option)
 				exit(2)
 			}
 			i = i + 1
 			continue
 		}
-		print("Error: Unknown option: " + token)
+		print("Error: Unknown option: " + display_text(token))
 		exit(2)
 	}
 }
@@ -160,7 +162,7 @@ func main() {
 
 	if subcommand != "scan" && subcommand != "checklist" && subcommand != "gate" && subcommand != "release-note" {
 		print_lines([
-			"Error: Unknown subcommand: " + subcommand,
+			"Error: Unknown subcommand: " + display_text(subcommand),
 			"Run 'kujo run shipcheck.kujo help' for usage."
 		])
 		exit(2)
@@ -172,7 +174,12 @@ func main() {
 	# Validate target directory
 	fe := file_exists(dir)
 	if fe == false && path_is_dir(dir) == false {
-		print("Error: Directory not found: " + dir)
+		print("Error: Directory not found: " + display_text(dir))
+		exit(1)
+	}
+
+	if !path_is_dir(dir) {
+		print("Error: Not a directory: " + display_text(dir))
 		exit(1)
 	}
 
@@ -220,10 +227,9 @@ func main() {
 	}
 
 	if subcommand == "release-note" {
-		from src.scan import run_scan
 		from src.checks import detect_version
 		from src.report import generate_release_note
-		results := run_scan(dir)
+		results := {"dir": dir}
 		ver := detect_version(dir)
 		generate_release_note(results, ver)
 		exit(0)

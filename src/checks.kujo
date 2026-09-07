@@ -49,7 +49,7 @@ export func check_readme(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true {
+		if path_is_file(p) == true {
 			return ok("readme", "README found: " + paths[i], "")
 		}
 		i = i + 1
@@ -62,7 +62,7 @@ export func check_license(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true {
+		if path_is_file(p) == true {
 			return ok("license", "LICENSE found: " + paths[i], "")
 		}
 		i = i + 1
@@ -77,7 +77,7 @@ export func check_gitignore(dir) {
 	has_dockerignore := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true {
+		if path_is_file(p) == true {
 			if paths[i] == ".gitignore" {
 				has_gitignore = 1
 			}
@@ -117,13 +117,13 @@ export func check_tests(dir) {
 	}
 	# Also check for test files at root level
 	test_patterns := ["test_", "_test.kujo", ".test.kujo", "_tests.kujo", ".spec.kujo"]
-	entries := list_dir(dir)
+	entries := sort(list_dir(dir))
 	mut j := 0
 	while j < len(entries) {
 		name := entries[j]
 		mut k := 0
 		while k < len(test_patterns) {
-			if contains(name, test_patterns[k]) == 1 {
+			if contains(name, test_patterns[k]) == 1 && path_is_file(join_path(dir, name)) {
 				return ok("tests-exist", "Test files found (pattern match)", "Matched: " + name)
 			}
 			k = k + 1
@@ -151,7 +151,7 @@ export func check_ci_config(dir) {
 			if len(entries) > 0 {
 				return ok("ci-config", "CI configuration found: " + paths[i], "")
 			}
-		} else if file_exists(p) == true {
+		} else if path_is_file(p) == true {
 			return ok("ci-config", "CI configuration found: " + paths[i], "")
 		}
 		i = i + 1
@@ -230,7 +230,7 @@ export func check_docs(dir) {
 export func check_version_metadata(dir) {
 	# Check kennel.toml
 	kennel_path := join_path(dir, "kennel.toml")
-	if file_exists(kennel_path) == true {
+	if path_is_file(kennel_path) == true {
 		content := read_file(kennel_path)
 		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "kennel.toml found with version field", "")
@@ -239,7 +239,7 @@ export func check_version_metadata(dir) {
 	}
 	# Check VERSION file
 	version_path := join_path(dir, "VERSION")
-	if file_exists(version_path) == true {
+	if path_is_file(version_path) == true {
 		ver := trim(read_file(version_path))
 		if ver != "" {
 			return ok("version-metadata", "VERSION file found: " + ver, "")
@@ -247,7 +247,7 @@ export func check_version_metadata(dir) {
 	}
 	# Check package.json
 	pkg_json := join_path(dir, "package.json")
-	if file_exists(pkg_json) == true {
+	if path_is_file(pkg_json) == true {
 		content := read_file(pkg_json)
 		if json_field_value(content, "version") != "" {
 			return ok("version-metadata", "package.json found with version field", "")
@@ -255,7 +255,7 @@ export func check_version_metadata(dir) {
 	}
 	# Check Cargo.toml
 	cargo_path := join_path(dir, "Cargo.toml")
-	if file_exists(cargo_path) == true {
+	if path_is_file(cargo_path) == true {
 		content := read_file(cargo_path)
 		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "Cargo.toml found with version field", "")
@@ -269,7 +269,7 @@ export func check_changelog(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true {
+		if path_is_file(p) == true {
 			return ok("changelog", "Changelog found: " + paths[i], "")
 		}
 		i = i + 1
@@ -279,22 +279,26 @@ export func check_changelog(dir) {
 
 export func check_kennel_manifest(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
-	if file_exists(kennel_path) == false {
+	if path_is_file(kennel_path) == false {
 		# Not a failure for non-Kujo projects
 		return warn("kennel-manifest", "No kennel.toml found", "Add kennel.toml for Kujo package metadata (if this is a Kujo project)")
 	}
-	content := read_file(kennel_path)
+	data := parse_metadata(read_file(kennel_path), "toml")
+	package := {}
+	if has_key(data, "package") {
+		package = data["package"]
+	}
 	missing := ""
-	if toml_value(content, "package", "name") == "" {
+	if string_field(package, "name") == "" {
 		missing = missing + "name "
 	}
-	if toml_value(content, "package", "version") == "" {
+	if string_field(package, "version") == "" {
 		missing = missing + "version "
 	}
-	if toml_value(content, "package", "description") == "" {
+	if string_field(package, "description") == "" {
 		missing = missing + "description "
 	}
-	if toml_value(content, "package", "license") == "" {
+	if string_field(package, "license") == "" {
 		missing = missing + "license "
 	}
 	if missing == "" {
@@ -305,21 +309,21 @@ export func check_kennel_manifest(dir) {
 
 export func check_entry_point(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
-	if file_exists(kennel_path) == true {
+	if path_is_file(kennel_path) == true {
 		content := read_file(kennel_path)
-		if contains(content, "entry") == 1 {
+		if toml_value(content, "kujo", "entry") != "" {
 			return ok("entry-point", "kennel.toml has entry point defined", "")
 		}
 	}
 	# Check for common entry point patterns
-	root_entries := list_dir(dir)
+	root_entries := sort(list_dir(dir))
 	mut i := 0
 	while i < len(root_entries) {
 		name := root_entries[i]
-		if ends_with(name, ".kujo") == 1 && starts_with(name, ".") == 0 {
+		if ends_with(name, ".kujo") && !starts_with(name, ".") {
 			# Check if it looks like a CLI entry point (has args() or main())
 			p := join_path(dir, name)
-			if file_exists(p) == true {
+			if path_is_file(p) == true {
 				content := read_file(p)
 				if contains(content, "args()") == 1 || contains(content, "func main") == 1 {
 					return ok("entry-point", "Likely entry point found: " + name, "")
@@ -338,7 +342,7 @@ func find_readme(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if file_exists(p) == true {
+		if path_is_file(p) == true {
 			return p
 		}
 		i = i + 1
@@ -350,71 +354,91 @@ func shell_quote(value) {
 	return "'" + replace(value, "'", "'\"'\"'") + "'"
 }
 
+# Parse structured metadata with the runtime parser. Invalid documents and
+# non-string signal fields cannot establish readiness.
+func parse_metadata(content, format) {
+	parsed := null
+	try {
+		if format == "toml" {
+			parsed = parse_toml(content)
+		} else {
+			parsed = parse_json(content)
+		}
+	} except e {
+		return {}
+	}
+	if type(parsed) == "dict" {
+		return parsed
+	}
+	return {}
+}
+
+func string_field(data, key) {
+	if type(data) == "dict" && has_key(data, key) {
+		value := data[key]
+		if type(value) == "string" {
+			return trim(value)
+		}
+	}
+	return ""
+}
+
 func toml_value(content, section, key) {
-	lines_list := split(content, "\n")
-	mut current_section := ""
+	data := parse_metadata(content, "toml")
+	if has_key(data, section) {
+		return string_field(data[section], key)
+	}
+	return ""
+}
+
+func json_field_value(content, field) {
+	return string_field(parse_metadata(content, "json"), field)
+}
+
+func script_keyword(content, format, keywords) {
+	data := parse_metadata(content, format)
+	if has_key(data, "scripts") == 0 || type(data["scripts"]) != "dict" {
+		return ""
+	}
+	scripts := data["scripts"]
+	names := sort(keys(scripts))
 	mut i := 0
-	while i < len(lines_list) {
-		line := trim(lines_list[i])
-		if starts_with(line, "[") && ends_with(line, "]") {
-			current_section = trim(substring(line, 1, len(line) - 1))
-		} else if current_section == section && !starts_with(line, "#") && contains(line, "=") {
-			parts := split(line, "=")
-			if len(parts) >= 2 && trim(parts[0]) == key {
-				value := clean_toml_value(parts[1])
-				if value != "" {
-					return value
-				}
+	while i < len(keywords) {
+		mut j := 0
+		while j < len(names) {
+			name := names[j]
+			if (name == keywords[i] || starts_with(name, keywords[i] + ":")) && string_field(scripts, name) != "" {
+				return keywords[i]
 			}
+			j = j + 1
 		}
 		i = i + 1
 	}
 	return ""
 }
 
-func clean_toml_value(raw) {
-	value := trim(raw)
-	if value == "" {
-		return ""
-	}
-	first := substring(value, 0, 1)
-	if first == "\"" || first == "'" {
-		mut i := 1
-		while i < len(value) {
-			if substring(value, i, i + 1) == first {
-				return substring(value, 1, i)
-			}
-			i = i + 1
-		}
-		return ""
-	}
-	comment_index := index_of(value, "#")
-	if comment_index >= 0 {
-		value = trim(substring(value, 0, comment_index))
-	}
-	return value
-}
-
-func json_field_value(content, field) {
-	parsed := null
-	parse_error := null
-	try {
-		parsed = parse_json(content)
-	} except e {
-		parse_error = e
-	}
-	if type(parse_error) != "null" || type(parsed) != "dict" {
-		return ""
-	}
-	field_names := keys(parsed)
+# Makefile detection is deliberately a literal-target signal, not Make execution.
+func make_keyword(content, keywords) {
+	lines := split(content, "\n")
 	mut i := 0
-	while i < len(field_names) {
-		if field_names[i] == field {
-			value := parsed[field]
-			if type(value) == "string" {
-				return trim(value)
+	while i < len(keywords) {
+		mut j := 0
+		while j < len(lines) {
+			line := lines[j]
+			if !starts_with(line, "\t") {
+				header := trim(split(split(line, "#")[0], ":")[0])
+				if contains(line, ":") && contains(header, "=") == 0 && !starts_with(trim(split(line, ":")[1]), "=") {
+					names := split(replace(header, "\t", " "), " ")
+					mut k := 0
+					while k < len(names) {
+						if names[k] == keywords[i] {
+							return keywords[i]
+						}
+						k = k + 1
+					}
+				}
 			}
-			return ""
+			j = j + 1
 		}
 		i = i + 1
 	}
@@ -422,49 +446,31 @@ func json_field_value(content, field) {
 }
 
 func detect_command(dir, cmd_category, keywords) {
-	# Check kennel.toml scripts section
 	kennel_path := join_path(dir, "kennel.toml")
-	if file_exists(kennel_path) == true {
-		content := read_file(kennel_path)
-		mut i := 0
-		while i < len(keywords) {
-			kw := keywords[i]
-			if contains(content, kw) == 1 {
-				return ok(cmd_category + "-command", "kennel.toml references " + kw + " command", "")
-			}
-			i = i + 1
+	if path_is_file(kennel_path) {
+		kennel_keyword := script_keyword(read_file(kennel_path), "toml", keywords)
+		if kennel_keyword != "" {
+			return ok(cmd_category + "-command", "kennel.toml references " + kennel_keyword + " command", "")
 		}
 	}
-	# Check Makefile
 	makefile := join_path(dir, "Makefile")
-	if file_exists(makefile) == true {
-		content := read_file(makefile)
-		mut i := 0
-		while i < len(keywords) {
-			kw := keywords[i]
-			if contains(content, kw) == 1 {
-				return ok(cmd_category + "-command", "Makefile has " + kw + " target", "")
-			}
-			i = i + 1
+	if path_is_file(makefile) {
+		make_match := make_keyword(read_file(makefile), keywords)
+		if make_match != "" {
+			return ok(cmd_category + "-command", "Makefile has " + make_match + " target", "")
 		}
 	}
-	# Check package.json scripts
 	pkg_json := join_path(dir, "package.json")
-	if file_exists(pkg_json) == true {
-		content := read_file(pkg_json)
-		mut i := 0
-		while i < len(keywords) {
-			kw := keywords[i]
-			if contains(content, kw) == 1 {
-				return ok(cmd_category + "-command", "package.json scripts reference " + kw, "")
-			}
-			i = i + 1
+	if path_is_file(pkg_json) {
+		package_keyword := script_keyword(read_file(pkg_json), "json", keywords)
+		if package_keyword != "" {
+			return ok(cmd_category + "-command", "package.json scripts reference " + package_keyword, "")
 		}
 	}
 	# Check if kujo.toml or similar config files exist (implies Kujo tooling)
 	if cmd_category == "lint" || cmd_category == "format" {
 		kujo_toml := join_path(dir, "kujo.toml")
-		if file_exists(kujo_toml) == true {
+		if path_is_file(kujo_toml) == true {
 			return ok(cmd_category + "-command", "kujo.toml found (Kujo lint/format available)", "")
 		}
 	}
@@ -474,28 +480,28 @@ func detect_command(dir, cmd_category, keywords) {
 # --- Project Type Detection ---
 
 export func detect_project_type(dir) {
-	if file_exists(join_path(dir, "kennel.toml")) == true {
+	if path_is_file(join_path(dir, "kennel.toml")) == true {
 		return "kujo"
 	}
-	if file_exists(join_path(dir, "Cargo.toml")) == true {
+	if path_is_file(join_path(dir, "Cargo.toml")) == true {
 		return "rust"
 	}
-	if file_exists(join_path(dir, "package.json")) == true {
+	if path_is_file(join_path(dir, "package.json")) == true {
 		return "node"
 	}
-	if file_exists(join_path(dir, "go.mod")) == true {
+	if path_is_file(join_path(dir, "go.mod")) == true {
 		return "go"
 	}
-	if file_exists(join_path(dir, "pyproject.toml")) == true || file_exists(join_path(dir, "setup.py")) == true {
+	if path_is_file(join_path(dir, "pyproject.toml")) == true || path_is_file(join_path(dir, "setup.py")) == true {
 		return "python"
 	}
-	if file_exists(join_path(dir, "composer.json")) == true {
+	if path_is_file(join_path(dir, "composer.json")) == true {
 		return "php"
 	}
-	if file_exists(join_path(dir, "Gemfile")) == true {
+	if path_is_file(join_path(dir, "Gemfile")) == true {
 		return "ruby"
 	}
-	if file_exists(join_path(dir, "Makefile")) == true {
+	if path_is_file(join_path(dir, "Makefile")) == true {
 		return "make-based"
 	}
 	return "unknown"
@@ -504,7 +510,7 @@ export func detect_project_type(dir) {
 export func detect_version(dir) {
 	# Try kennel.toml first
 	kennel_path := join_path(dir, "kennel.toml")
-	if file_exists(kennel_path) == true {
+	if path_is_file(kennel_path) == true {
 		content := read_file(kennel_path)
 		ver := toml_value(content, "package", "version")
 		if ver != "" {
@@ -513,8 +519,25 @@ export func detect_version(dir) {
 	}
 	# Try VERSION file
 	version_path := join_path(dir, "VERSION")
-	if file_exists(version_path) == true {
-		return trim(read_file(version_path))
+	if path_is_file(version_path) == true {
+		version_text := trim(read_file(version_path))
+		if version_text != "" {
+			return version_text
+		}
+	}
+	package_path := join_path(dir, "package.json")
+	if path_is_file(package_path) {
+		package_version := json_field_value(read_file(package_path), "version")
+		if package_version != "" {
+			return package_version
+		}
+	}
+	cargo_path := join_path(dir, "Cargo.toml")
+	if path_is_file(cargo_path) {
+		cargo_version := toml_value(read_file(cargo_path), "package", "version")
+		if cargo_version != "" {
+			return cargo_version
+		}
 	}
 	return "unknown"
 }

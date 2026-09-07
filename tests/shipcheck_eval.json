@@ -7,7 +7,7 @@
       "name": "ShipCheck scan markdown succeeds",
       "check": "output_contains",
       "params": {
-        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/shipcheck && kujo run shipcheck.kujo scan --dir .",
+        "command": "kujo run shipcheck.kujo scan --dir .",
         "expected": "# ShipCheck Release-Readiness Report"
       }
     },
@@ -15,7 +15,7 @@
       "name": "ShipCheck gate JSON passes",
       "check": "command_stdout_json_path_equals",
       "params": {
-        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/shipcheck && kujo run shipcheck.kujo gate --dir . --format json",
+        "command": "kujo run shipcheck.kujo gate --dir . --format json",
         "json_path": "summary.gate_passed",
         "expected": 1
       }
@@ -24,7 +24,7 @@
       "name": "ShipCheck CLI contract succeeds",
       "check": "command_succeeds",
       "params": {
-        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/shipcheck && tests/cli-output-contract.sh"
+        "command": "tests/cli-output-contract.sh"
       }
     }
   ]
