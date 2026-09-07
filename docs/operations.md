@@ -96,3 +96,37 @@ ShipCheck is a local scanner. It does not currently:
 - publish releases.
 
 It detects release readiness signals so your team can enforce consistent standards before shipping, but it does not certify a release or replace human review.
+
+## Repository verification
+
+From the ShipCheck checkout, with the runtime on `PATH`:
+
+```bash
+for source in shipcheck.kujo src/*.kujo; do
+  kujo check "$source"
+  kujo lint "$source"
+done
+tests/cli-output-contract.sh
+python3 tests/hardening-contract.py
+```
+
+Both test suites accept `KUJO_BIN=/absolute/path/to/kujo`. The Python suite uses
+only the standard library, temporary fixtures and offline subprocesses. CI runs
+both suites plus source checks and the self gate. The Eval definition in
+`tests/shipcheck_eval.json` expects the repository root as its working directory.
+
+For a repeatable comparison against the pre-hardening implementation:
+
+```bash
+mkdir -p .dogfood/hardening
+python3 tests/benchmark.py 4c958ab18d8a48c46e5904261af43d3e031343d1 .dogfood/hardening/benchmark.json
+```
+
+The benchmark alternates baseline/current execution order, discards warmups,
+records seven samples per command, and requires byte-identical fixture output.
+Timing is diagnostic evidence rather than a noisy CI threshold. Review the
+fixture and baseline reference when intentionally changing supported output.
+
+`release-note` reads version metadata and at most 20 Git log entries; it does not
+run readiness checks. Version priority is kennel.toml, a non-empty VERSION,
+package.json, then Cargo.toml. Run `gate` separately for readiness enforcement.

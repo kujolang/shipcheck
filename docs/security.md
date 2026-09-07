@@ -32,3 +32,24 @@ independent security review and release approval.
 Do not include secrets or exploit payloads in public issues. Report suspected
 path-handling, output-leakage, or command-execution vulnerabilities privately to
 the repository maintainers with a minimal reproduction and expected impact.
+
+## Output and filesystem handling
+
+Human-readable report fields and CLI diagnostics escape C0/C1 terminal control
+characters as visible `\uXXXX` sequences. Git release-note output disables color
+and escapes controls in each commit line. JSON preserves the original strings
+using JSON escaping. Reports and commit subjects remain untrusted Markdown;
+render them with a viewer that disables raw HTML and review before publication.
+
+The scanner requires a directory target and probes regular files before reading
+file signals, avoiding accidental reads from directories or FIFOs. Symlinks to
+regular files remain supported: this is not a filesystem confinement boundary.
+Filesystem probes and reads are not an atomic snapshot; concurrent repository
+changes can affect observations or cause a runtime I/O error. Retry only after
+stabilizing the target if a reproducible report is required.
+
+Metadata and source files are buffered by the runtime, with no ShipCheck-specific
+size quota. Root scans are shallow and release history is limited to 20 entries,
+but file size and directory breadth still determine resource use. Use external
+resource limits for adversarial repositories. No new cache, retry loop, mutable
+persistent state, or repository execution capability is introduced by scanning.

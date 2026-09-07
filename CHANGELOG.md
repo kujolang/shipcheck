@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Parse TOML metadata with the runtime parser and require real script/entry fields.
+- Reject non-file readiness signals, blank CLI values and non-directory targets.
+- Restore root Kujo entrypoint detection and stabilize filename selection.
+- Escape terminal controls in human output while preserving JSON data.
+- Draft release notes without a full scan; recognize Node and Rust versions.
+- Add offline hardening regressions, source CI checks and portable Eval commands.
+
+
+## Unreleased
+
 ### Fixed
 
 - Reject unknown and command-incompatible CLI options, and report unknown commands before validating their arguments.

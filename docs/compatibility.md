@@ -33,3 +33,17 @@ unknown commands return `2`.
 
 Review the changelog and schema diff before upgrading. Pin a tested `1.x`
 release in automation.
+
+## Hardening corrections (2026-09-07)
+
+Commands, options, JSON schema, check IDs, severities and numeric gate semantics
+are unchanged. Invalid metadata, non-file signals, and descriptive text mistaken
+for commands no longer pass checks. Legal TOML syntax is accepted through the
+runtime parser. Root entrypoint detection now uses the runtime's boolean string
+predicate contract. These corrections can change findings for previously
+misclassified repositories; they do not redefine the check catalog.
+
+A regular-file target returns exit 1 with `Not a directory`; blank option values
+return exit 2. Equals-containing paths remain accepted. Human output displays
+terminal controls visibly; machine JSON retains the original strings. Node and
+Rust release-note drafts now use the same version sources recognized by scans.

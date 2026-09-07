@@ -79,7 +79,7 @@ kujo run shipcheck.kujo scan --format yaml
 | --- | --- |
 | `scan` | Run all checks and print a full release-readiness report |
 | `checklist` | Print an actionable release checklist plus current check state |
-| `gate` | Run checks and fail fast if any error-level checks fail |
+| `gate` | Run checks and exit nonzero if any error-level checks fail |
 | `release-note` | Draft release notes using recent git commits |
 | `version` | Print tool version and summary |
 | `help` | Print usage and examples |
@@ -148,7 +148,7 @@ kujo run shipcheck.kujo scan --dir . --format json > shipcheck-report.json
 
 Additional operational guidance is in [docs/operations.md](docs/operations.md).
 
-This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It builds a pinned Kujo runtime, runs the CLI contract test, and then runs ShipCheck's own scan and gate.
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It builds a pinned Kujo runtime, runs CLI and hardening contract tests plus source validation, and then runs ShipCheck's own scan and gate.
 
 ## Project Status
 

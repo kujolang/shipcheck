@@ -44,3 +44,8 @@ tests/cli-output-contract.sh
 ```
 
 Run focused checks for touched Kujo files, then run the CLI contract test and ShipCheck's own scan/gate smoke checks.
+
+The full offline regression suite also includes `python3 tests/hardening-contract.py`
+(with the same `KUJO_BIN` override). See `docs/operations.md` for source validation
+and the optional benchmark; `docs/audits/repository-hardening.md` records the
+2026-09-07 baseline and compatibility corrections.
