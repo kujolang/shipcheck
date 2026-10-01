@@ -1,3 +1,5 @@
+from src.git import git_output
+
 # src/checks.kujo — Individual release-readiness check functions.
 #
 # Each check returns a dict with:
@@ -35,10 +37,8 @@ func fail(name, message, detail) {
 # --- Repo Health Checks ---
 
 export func check_git_repo(dir) {
-	cmd := "git -C " + shell_quote(dir) + " rev-parse --git-dir 2>/dev/null"
-	result := execute_status(cmd)
-	ec := result.exitcode
-	if ec == 0 {
+	output := git_output(dir, ["rev-parse", "--git-dir"])
+	if output != "" {
 		return ok("git-repo", "Git repository detected", "")
 	}
 	return fail("git-repo", "Not a git repository", "Run 'git init' to initialize")
@@ -350,9 +350,6 @@ func find_readme(dir) {
 	return ""
 }
 
-func shell_quote(value) {
-	return "'" + replace(value, "'", "'\"'\"'") + "'"
-}
 
 # Parse structured metadata with the runtime parser. Invalid documents and
 # non-string signal fields cannot establish readiness.

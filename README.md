@@ -71,7 +71,7 @@ kujo run shipcheck.kujo scan --format yaml
 - Uses error vs warning severity so teams can gate on what matters.
 - Works fully offline on local repositories.
 - Produces structured JSON for automation and reporting systems.
-- Shell-quotes target directories before invoking Git subprocesses.
+- Passes target directories as literal Git process arguments without a shell.
 
 ## Command Reference
 

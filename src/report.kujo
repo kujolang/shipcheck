@@ -1,4 +1,5 @@
 from src.display import display_text
+from src.git import git_output
 
 # src/report.kujo — Report generation for ShipCheck results.
 #
@@ -148,10 +149,10 @@ export func generate_release_note(results, version) {
 		""
 	])
 
-	result := execute_status("git -C " + shell_quote(dir) + " log --no-color --oneline -20 2>/dev/null")
-	if result.exitcode == 0 && result.stdout != "" {
+	output := git_output(dir, ["log", "--no-color", "--oneline", "-20"])
+	if output != "" {
 		print_lines(["## Recent Commits", "", "```"])
-		commit_lines := split(trim(result.stdout), "\n")
+		commit_lines := split(trim(output), "\n")
 		mut i := 0
 		while i < len(commit_lines) {
 			print(display_text(commit_lines[i]))
@@ -222,9 +223,6 @@ func print_lines(lines) {
 	}
 }
 
-func shell_quote(value) {
-	return "'" + replace(value, "'", "'\"'\"'") + "'"
-}
 
 func print_check_section(checks, title, names) {
 	print_heading(title)
