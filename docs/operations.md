@@ -56,7 +56,7 @@ The repository includes `.github/workflows/ci.yml`, which builds a pinned Kujo r
 
 ## Security Posture
 
-- Paths passed to Git subprocesses are shell-quoted before execution.
+- Paths passed to Git subprocesses are literal arguments; no shell is used.
 - CI uses a pinned Kujo runtime ref so the gate runs against a reproducible language/runtime build.
 - Unsupported output formats fail with exit `2` instead of silently falling back to Markdown.
 - ShipCheck reads local repository files and runs local Git commands; it does not call network services while scanning.

@@ -8,8 +8,8 @@ certifier, sandbox, or policy-enforcement system.
 
 ## Assets and trust boundaries
 
-- Repository paths and filenames are untrusted input. ShipCheck shell-quotes
-  paths supplied to Git subprocesses, and contract tests cover shell
+- Repository paths and filenames are untrusted input. ShipCheck passes
+  paths as literal Git arguments without a shell, and contract tests cover shell
   metacharacters in target directories.
 - Repository contents are read as text to detect common readiness signals.
   ShipCheck does not upload those contents or make network requests.
@@ -50,6 +50,8 @@ stabilizing the target if a reproducible report is required.
 
 Metadata and source files are buffered by the runtime, with no ShipCheck-specific
 size quota. Root scans are shallow and release history is limited to 20 entries,
+with Git calls limited to five seconds and one MiB per output stream. Incomplete
+Git output cannot pass repository detection and is omitted from release drafts,
 but file size and directory breadth still determine resource use. Use external
 resource limits for adversarial repositories. No new cache, retry loop, mutable
 persistent state, or repository execution capability is introduced by scanning.

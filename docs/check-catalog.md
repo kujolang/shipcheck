@@ -54,7 +54,7 @@ ShipCheck currently runs 16 checks grouped into 4 categories.
 - A passing gate is evidence that these local metadata checks passed, not human
   release certification or a security assessment.
 - The CLI contract suite exercises non-repository failure handling, hostile path
-  quoting, and representative Node and Kujo fixture repositories. The generic
+  argument handling, and representative Node and Kujo fixture repositories. The generic
   checks deliberately report signals rather than infer that a project is safe,
   production-ready, or publishable.
 
