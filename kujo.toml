@@ -1,8 +1,8 @@
 # kujo.toml — Kujo project configuration for ShipCheck
 
 [kujo]
-minimum_version = "0.1.0"
+minimum_version = "1.6.0"
 
 [project]
 name = "shipcheck"
-version = "1.0.0"
+version = "1.0.1"

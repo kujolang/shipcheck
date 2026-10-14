@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
+
+## [1.0.1] - 2026-10-14
 
 - Parse TOML metadata with the runtime parser and require real script/entry fields.
 - Reject non-file readiness signals, blank CLI values and non-directory targets.
@@ -10,8 +12,6 @@
 - Add offline hardening regressions, source CI checks and portable Eval commands.
 
 
-## Unreleased
-
 ### Fixed
 
 - Reject unknown and command-incompatible CLI options, and report unknown commands before validating their arguments.
@@ -19,6 +19,12 @@
 - Require real version metadata in `package.json`, non-empty `VERSION` files, and the TOML `[package]` section.
 - Validate required `kennel.toml` fields in `[package]` instead of matching unrelated text.
 - Align the public JSON schema identifier and version pattern with ShipCheck 1.x output.
+
+### Compatibility
+
+- Inspect Git through bounded argument-vector processes without shell authority; fail closed on incomplete process output.
+- Require Kujo 1.6.0 or newer. Commands, JSON fields, check identifiers and gate exit semantics remain compatible.
+- Previously misclassified repositories may now fail their gate; review findings after upgrading rather than suppressing corrected checks.
 
 ## [1.0.0] - 2026-08-08
 
