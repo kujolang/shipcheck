@@ -1,6 +1,6 @@
 [package]
 name = "shipcheck"
-version = "1.0.1"
+version = "1.0.2"
 description = "Release-readiness scanner for Kujo ecosystem projects. Inspects a repository and produces structured reports, checklists, and release gate validation."
 license = "MIT"
 authors = ["Kujolang <me@kujolang.ai>"]

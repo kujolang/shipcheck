@@ -1,6 +1,6 @@
 # ShipCheck
 
-[![Version](https://img.shields.io/badge/version-1.0.1-black)](https://github.com/kujolang/shipcheck)
+[![Version](https://img.shields.io/badge/version-1.0.2-black)](https://github.com/kujolang/shipcheck)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
@@ -152,7 +152,7 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`
 
 ## Project Status
 
-Prepared release: `v1.0.1` (pending review and publication). Requires Kujo 1.6.0 or newer.
+Current release line: `v1.0.2`. Requires Kujo 1.6.0 or newer.
 
 ShipCheck 1.0 has a stable core command surface and gate behavior covered by contract tests. Current self-scan status is 16/16 checks passing with zero warnings.
 

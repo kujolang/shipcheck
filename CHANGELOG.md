@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-10-21
+
+- Update Node.js requirements for portable Git and release tooling while preserving the CLI and JSON contracts.
+
 ## [Unreleased]
 
 ## [1.0.1] - 2026-10-14
