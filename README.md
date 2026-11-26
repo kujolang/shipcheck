@@ -23,7 +23,7 @@ ShipCheck is a production-forward alpha: the CLI surface, JSON shape, and gate s
 
 Requirements:
 
-- Kujo runtime available as `kujo`
+- Kujo 1.6.0 or newer available as `kujo`
 - Git available on `PATH`
 
 Run from this repository:

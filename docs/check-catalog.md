@@ -60,9 +60,7 @@ ShipCheck currently runs 16 checks grouped into 4 categories.
 
 ## Detection details
 
-Named file signals require regular files (symlinks to regular files remain
-supported). Directories and FIFOs named like manifests or README files do not
-count. Non-empty test/CI/docs/example directories remain presence signals;
+Named files and directories must resolve inside the scan target. Aliases to in-tree regular files remain supported. Directories and FIFOs named like manifests or README files do not count. Non-empty test/CI/docs/example directories remain presence signals;
 ShipCheck does not establish that their contents are runnable or correct.
 
 JSON and TOML metadata use the Kujo runtime parsers. A malformed document or a
@@ -70,7 +68,7 @@ missing, blank, or non-string metadata field cannot establish that signal.
 Kennel metadata comes from `[package]`; entry metadata comes from `[kujo].entry`.
 The entry check remains a declaration signal, not a validation of the declared
 path. Without entry metadata, visible root `.kujo` files containing `args()` or
-`func main` are inspected in sorted filename order.
+`func main` are inspected in sorted filename order within the limits in the [security guide](security.md).
 
 Lint/format signals recognize non-empty string scripts named `lint`, `check`,
 `style` or `format`, `fmt`, `beautify`, respectively, including colon suffixes

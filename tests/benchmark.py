@@ -24,7 +24,13 @@ def main():
     with tempfile.TemporaryDirectory(prefix='shipcheck-benchmark-') as directory:
         temp = Path(directory)
         old = temp / 'baseline'
-        for name in ('shipcheck.kujo', 'src/checks.kujo', 'src/scan.kujo', 'src/report.kujo'):
+        names = subprocess.check_output(
+            ['git', 'ls-tree', '-r', '--name-only', '-z', baseline, '--', 'shipcheck.kujo', 'src'],
+            cwd=ROOT,
+        ).decode().split('\0')
+        for name in names:
+            if not name.endswith('.kujo'):
+                continue
             path = old / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(subprocess.check_output(['git', 'show', f'{baseline}:{name}'], cwd=ROOT))

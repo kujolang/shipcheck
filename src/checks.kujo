@@ -34,6 +34,54 @@ func fail(name, message, detail) {
 	return r
 }
 
+# Resolve intentional in-tree aliases before opening files through a rooted
+# reader. Descriptor-relative reads reject replacement links beneath this root.
+func scoped_path(dir, path) {
+	try {
+		root := path_absolute(dir)
+		canonical := path_absolute(path)
+		if canonical == root { return "" }
+		separator := "/"
+		if regex_match(root, "^[A-Za-z]:") || starts_with(root, "\\\\") { separator = "\\" }
+		prefix := root
+		if !ends_with(root, separator) { prefix = root + separator }
+		if !starts_with(canonical, prefix) { return "" }
+		return substring(canonical, len(prefix), len(canonical))
+	} except e { return "" }
+}
+
+func regular_signal(dir, path) {
+	return path_is_file(path) && scoped_path(dir, path) != ""
+}
+
+func directory_signal(dir, path) {
+	return path_is_dir(path) && scoped_path(dir, path) != ""
+}
+
+func read_signal(dir, path, limit) {
+	if !path_is_file(path) { return "" }
+	relative := scoped_path(dir, path)
+	if relative == "" { return "" }
+	try { return read_file_beneath(path_absolute(dir), relative, limit) }
+	except e { return "" }
+}
+
+func root_signal_entries(dir) {
+	try { return list_dir_page(dir, "", 8192, "")["entries"] }
+	except e { return [] }
+}
+
+func directory_entry_count(path) {
+	try { return list_dir_page(path, "", 1, "")["examined_entries"] }
+	except e { return 0 }
+}
+
+func read_version_file(dir, path) {
+	version := trim(read_signal(dir, path, 256))
+	if regex_match(version, "^[^\\s\\x00-\\x1f\\x7f]{1,128}$") { return version }
+	return ""
+}
+
 # --- Repo Health Checks ---
 
 export func check_git_repo(dir) {
@@ -49,7 +97,7 @@ export func check_readme(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_file(p) == true {
+		if regular_signal(dir, p) == true {
 			return ok("readme", "README found: " + paths[i], "")
 		}
 		i = i + 1
@@ -62,7 +110,7 @@ export func check_license(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_file(p) == true {
+		if regular_signal(dir, p) == true {
 			return ok("license", "LICENSE found: " + paths[i], "")
 		}
 		i = i + 1
@@ -77,7 +125,7 @@ export func check_gitignore(dir) {
 	has_dockerignore := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_file(p) == true {
+		if regular_signal(dir, p) == true {
 			if paths[i] == ".gitignore" {
 				has_gitignore = 1
 			}
@@ -107,9 +155,9 @@ export func check_tests(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_dir(p) == true {
-			entries := list_dir(p)
-			if len(entries) > 0 {
+		if directory_signal(dir, p) == true {
+			entry_count := directory_entry_count(p)
+			if entry_count > 0 {
 				return ok("tests-exist", "Test directory found: " + paths[i], "")
 			}
 		}
@@ -117,13 +165,13 @@ export func check_tests(dir) {
 	}
 	# Also check for test files at root level
 	test_patterns := ["test_", "_test.kujo", ".test.kujo", "_tests.kujo", ".spec.kujo"]
-	entries := sort(list_dir(dir))
+	entries := root_signal_entries(dir)
 	mut j := 0
 	while j < len(entries) {
 		name := entries[j]
 		mut k := 0
 		while k < len(test_patterns) {
-			if contains(name, test_patterns[k]) == 1 && path_is_file(join_path(dir, name)) {
+			if contains(name, test_patterns[k]) == 1 && regular_signal(dir, join_path(dir, name)) {
 				return ok("tests-exist", "Test files found (pattern match)", "Matched: " + name)
 			}
 			k = k + 1
@@ -146,12 +194,12 @@ export func check_ci_config(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_dir(p) == true {
-			entries := list_dir(p)
-			if len(entries) > 0 {
+		if directory_signal(dir, p) == true {
+			entry_count := directory_entry_count(p)
+			if entry_count > 0 {
 				return ok("ci-config", "CI configuration found: " + paths[i], "")
 			}
-		} else if path_is_file(p) == true {
+		} else if regular_signal(dir, p) == true {
 			return ok("ci-config", "CI configuration found: " + paths[i], "")
 		}
 		i = i + 1
@@ -166,12 +214,9 @@ export func check_readme_has_install(dir) {
 	if readme_path == "" {
 		return warn("readme-install", "Cannot check: no README found", "")
 	}
-	content := read_file(readme_path)
+	content := read_signal(dir, readme_path, 1048576)
 	lower := to_lower(content)
-	has_install := contains(lower, "install") == 1
-	has_quickstart := contains(lower, "quickstart") == 1 || contains(lower, "quick start") == 1
-	has_getting_started := contains(lower, "getting started") == 1
-	if has_install || has_quickstart || has_getting_started {
+	if regex_match(lower, "\\binstall(?:s|ed|ation|ing)?\\b|\\bquick[ -]?start\\b|\\bgetting[ -]+started\\b") {
 		return ok("readme-install", "README has install/quickstart instructions", "")
 	}
 	return warn("readme-install", "README may lack install instructions", "Add an 'Install' or 'Quick Start' section")
@@ -182,11 +227,9 @@ export func check_readme_has_usage(dir) {
 	if readme_path == "" {
 		return warn("readme-usage", "Cannot check: no README found", "")
 	}
-	content := read_file(readme_path)
+	content := read_signal(dir, readme_path, 1048576)
 	lower := to_lower(content)
-	has_usage := contains(lower, "usage") == 1
-	has_example := contains(lower, "example") == 1
-	if has_usage || has_example {
+	if regex_match(lower, "\\busage\\b|\\bexamples?\\b") {
 		return ok("readme-usage", "README has usage/examples", "")
 	}
 	return warn("readme-usage", "README may lack usage instructions", "Add a 'Usage' section with examples")
@@ -194,18 +237,18 @@ export func check_readme_has_usage(dir) {
 
 export func check_examples(dir) {
 	examples_path := join_path(dir, "examples")
-	if path_is_dir(examples_path) == true {
-		entries := list_dir(examples_path)
-		if len(entries) > 0 {
-			return ok("examples", "Examples directory found with " + to_string(len(entries)) + " entries", "")
+	if directory_signal(dir, examples_path) == true {
+		entry_count := directory_entry_count(examples_path)
+		if entry_count > 0 {
+			return ok("examples", "Examples directory found with " + to_string(entry_count) + " entries", "")
 		}
 		return warn("examples", "Examples directory exists but is empty", "Add example files")
 	}
 	# Check for demo directory
 	demo_path := join_path(dir, "demo")
-	if path_is_dir(demo_path) == true {
-		entries := list_dir(demo_path)
-		if len(entries) > 0 {
+	if directory_signal(dir, demo_path) == true {
+		entry_count := directory_entry_count(demo_path)
+		if entry_count > 0 {
 			return ok("examples", "Demo directory found", "")
 		}
 		return warn("examples", "Demo directory exists but is empty", "Add example files")
@@ -215,10 +258,10 @@ export func check_examples(dir) {
 
 export func check_docs(dir) {
 	docs_path := join_path(dir, "docs")
-	if path_is_dir(docs_path) == true {
-		entries := list_dir(docs_path)
-		if len(entries) > 0 {
-			return ok("docs", "Documentation directory found with " + to_string(len(entries)) + " entries", "")
+	if directory_signal(dir, docs_path) == true {
+		entry_count := directory_entry_count(docs_path)
+		if entry_count > 0 {
+			return ok("docs", "Documentation directory found with " + to_string(entry_count) + " entries", "")
 		}
 		return warn("docs", "docs/ directory exists but is empty", "Add documentation files")
 	}
@@ -230,8 +273,8 @@ export func check_docs(dir) {
 export func check_version_metadata(dir) {
 	# Check kennel.toml
 	kennel_path := join_path(dir, "kennel.toml")
-	if path_is_file(kennel_path) == true {
-		content := read_file(kennel_path)
+	if regular_signal(dir, kennel_path) == true {
+		content := read_signal(dir, kennel_path, 1048576)
 		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "kennel.toml found with version field", "")
 		}
@@ -239,24 +282,24 @@ export func check_version_metadata(dir) {
 	}
 	# Check VERSION file
 	version_path := join_path(dir, "VERSION")
-	if path_is_file(version_path) == true {
-		ver := trim(read_file(version_path))
+	if regular_signal(dir, version_path) == true {
+		ver := read_version_file(dir, version_path)
 		if ver != "" {
 			return ok("version-metadata", "VERSION file found: " + ver, "")
 		}
 	}
 	# Check package.json
 	pkg_json := join_path(dir, "package.json")
-	if path_is_file(pkg_json) == true {
-		content := read_file(pkg_json)
+	if regular_signal(dir, pkg_json) == true {
+		content := read_signal(dir, pkg_json, 1048576)
 		if json_field_value(content, "version") != "" {
 			return ok("version-metadata", "package.json found with version field", "")
 		}
 	}
 	# Check Cargo.toml
 	cargo_path := join_path(dir, "Cargo.toml")
-	if path_is_file(cargo_path) == true {
-		content := read_file(cargo_path)
+	if regular_signal(dir, cargo_path) == true {
+		content := read_signal(dir, cargo_path, 1048576)
 		if toml_value(content, "package", "version") != "" {
 			return ok("version-metadata", "Cargo.toml found with version field", "")
 		}
@@ -269,7 +312,7 @@ export func check_changelog(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_file(p) == true {
+		if regular_signal(dir, p) == true {
 			return ok("changelog", "Changelog found: " + paths[i], "")
 		}
 		i = i + 1
@@ -279,11 +322,11 @@ export func check_changelog(dir) {
 
 export func check_kennel_manifest(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
-	if path_is_file(kennel_path) == false {
+	if regular_signal(dir, kennel_path) == false {
 		# Not a failure for non-Kujo projects
 		return warn("kennel-manifest", "No kennel.toml found", "Add kennel.toml for Kujo package metadata (if this is a Kujo project)")
 	}
-	data := parse_metadata(read_file(kennel_path), "toml")
+	data := parse_metadata(read_signal(dir, kennel_path, 1048576), "toml")
 	package := {}
 	if has_key(data, "package") {
 		package = data["package"]
@@ -309,22 +352,24 @@ export func check_kennel_manifest(dir) {
 
 export func check_entry_point(dir) {
 	kennel_path := join_path(dir, "kennel.toml")
-	if path_is_file(kennel_path) == true {
-		content := read_file(kennel_path)
+	if regular_signal(dir, kennel_path) == true {
+		content := read_signal(dir, kennel_path, 1048576)
 		if toml_value(content, "kujo", "entry") != "" {
 			return ok("entry-point", "kennel.toml has entry point defined", "")
 		}
 	}
 	# Check for common entry point patterns
-	root_entries := sort(list_dir(dir))
+	root_entries := root_signal_entries(dir)
 	mut i := 0
-	while i < len(root_entries) {
+	mut sources_checked := 0
+	while i < len(root_entries) && sources_checked < 256 {
 		name := root_entries[i]
 		if ends_with(name, ".kujo") && !starts_with(name, ".") {
 			# Check if it looks like a CLI entry point (has args() or main())
 			p := join_path(dir, name)
-			if path_is_file(p) == true {
-				content := read_file(p)
+			if regular_signal(dir, p) == true {
+				sources_checked = sources_checked + 1
+				content := read_signal(dir, p, 262144)
 				if contains(content, "args()") == 1 || contains(content, "func main") == 1 {
 					return ok("entry-point", "Likely entry point found: " + name, "")
 				}
@@ -342,7 +387,7 @@ func find_readme(dir) {
 	mut i := 0
 	while i < len(paths) {
 		p := join_path(dir, paths[i])
-		if path_is_file(p) == true {
+		if regular_signal(dir, p) == true {
 			return p
 		}
 		i = i + 1
@@ -423,8 +468,12 @@ func make_keyword(content, keywords) {
 		while j < len(lines) {
 			line := lines[j]
 			if !starts_with(line, "\t") {
-				header := trim(split(split(line, "#")[0], ":")[0])
-				if contains(line, ":") && contains(header, "=") == 0 && !starts_with(trim(split(line, ":")[1]), "=") {
+				statement := split(line, "#")[0]
+				colon := index_of(statement, ":")
+				if colon < 0 { j = j + 1; continue }
+				header := trim(substring(statement, 0, colon))
+				tail := substring(statement, colon + 1, len(statement))
+				if contains(header, "=") == 0 && !regex_match(tail, "^:*\\s*=") {
 					names := split(replace(header, "\t", " "), " ")
 					mut k := 0
 					while k < len(names) {
@@ -444,22 +493,22 @@ func make_keyword(content, keywords) {
 
 func detect_command(dir, cmd_category, keywords) {
 	kennel_path := join_path(dir, "kennel.toml")
-	if path_is_file(kennel_path) {
-		kennel_keyword := script_keyword(read_file(kennel_path), "toml", keywords)
+	if regular_signal(dir, kennel_path) {
+		kennel_keyword := script_keyword(read_signal(dir, kennel_path, 1048576), "toml", keywords)
 		if kennel_keyword != "" {
 			return ok(cmd_category + "-command", "kennel.toml references " + kennel_keyword + " command", "")
 		}
 	}
 	makefile := join_path(dir, "Makefile")
-	if path_is_file(makefile) {
-		make_match := make_keyword(read_file(makefile), keywords)
+	if regular_signal(dir, makefile) {
+		make_match := make_keyword(read_signal(dir, makefile, 1048576), keywords)
 		if make_match != "" {
 			return ok(cmd_category + "-command", "Makefile has " + make_match + " target", "")
 		}
 	}
 	pkg_json := join_path(dir, "package.json")
-	if path_is_file(pkg_json) {
-		package_keyword := script_keyword(read_file(pkg_json), "json", keywords)
+	if regular_signal(dir, pkg_json) {
+		package_keyword := script_keyword(read_signal(dir, pkg_json, 1048576), "json", keywords)
 		if package_keyword != "" {
 			return ok(cmd_category + "-command", "package.json scripts reference " + package_keyword, "")
 		}
@@ -467,7 +516,7 @@ func detect_command(dir, cmd_category, keywords) {
 	# Check if kujo.toml or similar config files exist (implies Kujo tooling)
 	if cmd_category == "lint" || cmd_category == "format" {
 		kujo_toml := join_path(dir, "kujo.toml")
-		if path_is_file(kujo_toml) == true {
+		if regular_signal(dir, kujo_toml) == true {
 			return ok(cmd_category + "-command", "kujo.toml found (Kujo lint/format available)", "")
 		}
 	}
@@ -477,28 +526,28 @@ func detect_command(dir, cmd_category, keywords) {
 # --- Project Type Detection ---
 
 export func detect_project_type(dir) {
-	if path_is_file(join_path(dir, "kennel.toml")) == true {
+	if regular_signal(dir, join_path(dir, "kennel.toml")) == true {
 		return "kujo"
 	}
-	if path_is_file(join_path(dir, "Cargo.toml")) == true {
+	if regular_signal(dir, join_path(dir, "Cargo.toml")) == true {
 		return "rust"
 	}
-	if path_is_file(join_path(dir, "package.json")) == true {
+	if regular_signal(dir, join_path(dir, "package.json")) == true {
 		return "node"
 	}
-	if path_is_file(join_path(dir, "go.mod")) == true {
+	if regular_signal(dir, join_path(dir, "go.mod")) == true {
 		return "go"
 	}
-	if path_is_file(join_path(dir, "pyproject.toml")) == true || path_is_file(join_path(dir, "setup.py")) == true {
+	if regular_signal(dir, join_path(dir, "pyproject.toml")) == true || regular_signal(dir, join_path(dir, "setup.py")) == true {
 		return "python"
 	}
-	if path_is_file(join_path(dir, "composer.json")) == true {
+	if regular_signal(dir, join_path(dir, "composer.json")) == true {
 		return "php"
 	}
-	if path_is_file(join_path(dir, "Gemfile")) == true {
+	if regular_signal(dir, join_path(dir, "Gemfile")) == true {
 		return "ruby"
 	}
-	if path_is_file(join_path(dir, "Makefile")) == true {
+	if regular_signal(dir, join_path(dir, "Makefile")) == true {
 		return "make-based"
 	}
 	return "unknown"
@@ -507,8 +556,8 @@ export func detect_project_type(dir) {
 export func detect_version(dir) {
 	# Try kennel.toml first
 	kennel_path := join_path(dir, "kennel.toml")
-	if path_is_file(kennel_path) == true {
-		content := read_file(kennel_path)
+	if regular_signal(dir, kennel_path) == true {
+		content := read_signal(dir, kennel_path, 1048576)
 		ver := toml_value(content, "package", "version")
 		if ver != "" {
 			return ver
@@ -516,22 +565,22 @@ export func detect_version(dir) {
 	}
 	# Try VERSION file
 	version_path := join_path(dir, "VERSION")
-	if path_is_file(version_path) == true {
-		version_text := trim(read_file(version_path))
+	if regular_signal(dir, version_path) == true {
+		version_text := read_version_file(dir, version_path)
 		if version_text != "" {
 			return version_text
 		}
 	}
 	package_path := join_path(dir, "package.json")
-	if path_is_file(package_path) {
-		package_version := json_field_value(read_file(package_path), "version")
+	if regular_signal(dir, package_path) {
+		package_version := json_field_value(read_signal(dir, package_path, 1048576), "version")
 		if package_version != "" {
 			return package_version
 		}
 	}
 	cargo_path := join_path(dir, "Cargo.toml")
-	if path_is_file(cargo_path) {
-		cargo_version := toml_value(read_file(cargo_path), "package", "version")
+	if regular_signal(dir, cargo_path) {
+		cargo_version := toml_value(read_signal(dir, cargo_path, 1048576), "package", "version")
 		if cargo_version != "" {
 			return cargo_version
 		}
