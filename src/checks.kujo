@@ -51,7 +51,11 @@ func scoped_path(dir, path) {
 }
 
 func regular_signal(dir, path) {
-	return path_is_file(path) && scoped_path(dir, path) != ""
+	if !path_is_file(path) { return false }
+	try {
+		if path == join_path(dir, basename(path)) && !path_is_symlink(path) { return true }
+		return scoped_path(dir, path) != ""
+	} except e { return false }
 }
 
 func directory_signal(dir, path) {
@@ -59,10 +63,17 @@ func directory_signal(dir, path) {
 }
 
 func read_signal(dir, path, limit) {
+	name := basename(path)
+	if path == join_path(dir, name) {
+		try { return read_file_beneath(dir, name, limit) }
+		except e {
+			try { if !path_is_symlink(path) { return "" } } except missing { return "" }
+		}
+	}
 	if !path_is_file(path) { return "" }
 	relative := scoped_path(dir, path)
 	if relative == "" { return "" }
-	try { return read_file_beneath(path_absolute(dir), relative, limit) }
+	try { return read_file_beneath(dir, relative, limit) }
 	except e { return "" }
 }
 
@@ -366,13 +377,10 @@ export func check_entry_point(dir) {
 		name := root_entries[i]
 		if ends_with(name, ".kujo") && !starts_with(name, ".") {
 			# Check if it looks like a CLI entry point (has args() or main())
-			p := join_path(dir, name)
-			if regular_signal(dir, p) == true {
-				sources_checked = sources_checked + 1
-				content := read_signal(dir, p, 262144)
-				if contains(content, "args()") == 1 || contains(content, "func main") == 1 {
-					return ok("entry-point", "Likely entry point found: " + name, "")
-				}
+			sources_checked = sources_checked + 1
+			content := read_signal(dir, join_path(dir, name), 262144)
+			if contains(content, "args()") == 1 || contains(content, "func main") == 1 {
+				return ok("entry-point", "Likely entry point found: " + name, "")
 			}
 		}
 		i = i + 1
