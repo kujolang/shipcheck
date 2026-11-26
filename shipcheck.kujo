@@ -111,6 +111,7 @@ func output_format(argv) {
 
 func validate_flag_values(argv) {
 	mut i := 1
+	mut seen := {}
 	while i < len(argv) {
 		token := to_string(argv[i])
 		if token == "--dir" || token == "--format" {
@@ -123,6 +124,8 @@ func validate_flag_values(argv) {
 				print("Error: Missing value for " + display_text(token))
 				exit(2)
 			}
+			if has_key(seen, token) { print("Error: Duplicate option: " + token); exit(2) }
+			seen[token] = true
 			i = i + 2
 			continue
 		}
@@ -136,6 +139,8 @@ func validate_flag_values(argv) {
 				print("Error: Missing value for " + option)
 				exit(2)
 			}
+			if has_key(seen, option) { print("Error: Duplicate option: " + option); exit(2) }
+			seen[option] = true
 			i = i + 1
 			continue
 		}

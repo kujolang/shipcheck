@@ -22,9 +22,9 @@ class HardeningContract(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
 
-    def run_cli(self, command='scan', *args, status=0):
+    def run_cli(self, command='scan', *args, status=0, env=None):
         p = subprocess.run([KUJO, 'run', str(ROOT / 'shipcheck.kujo'), command,
-                            '--dir', str(self.repo), *args], capture_output=True, text=True, timeout=30)
+                            '--dir', str(self.repo), *args], capture_output=True, text=True, timeout=30, env=env)
         self.assertEqual(p.returncode, status, p.stdout + p.stderr)
         return p.stdout
 
@@ -97,6 +97,46 @@ class HardeningContract(unittest.TestCase):
         for name in ('readme', 'license', 'changelog', 'kennel-manifest', 'tests-exist'):
             self.assertEqual(c[name]['passed'], 0, name)
 
+    def test_regular_read_signals_remain_in_target(self):
+        with tempfile.TemporaryDirectory(prefix='shipcheck-metadata-') as sibling:
+            external = Path(sibling) / 'VERSION'
+            external.write_text('9.8.7\n')
+            self.write('metadata/version', '1.2.3\n')
+            link = self.repo / 'VERSION'
+            link.symlink_to(external)
+            self.assertEqual(self.scan()['version-metadata']['passed'], 0)
+            link.unlink()
+            link.symlink_to('metadata/version')
+            self.assertEqual(self.scan()['version-metadata']['passed'], 1)
+
+    def test_oversized_metadata_yields_structured_checks(self):
+        self.write('kennel.toml', ' ' * 1048577)
+        checks = self.scan()
+        self.assertEqual(checks['version-metadata']['passed'], 0)
+        self.assertEqual(checks['kennel-manifest']['passed'], 0)
+
+    def test_literal_signals_ignore_unrelated_words_and_assignments(self):
+        self.write('README.md', 'A note about uninstallers, overusage, and exampleless documents.')
+        self.write('Makefile', 'lint # commented colon: \nformat ::= variable\n')
+        checks = self.scan()
+        for name in ('readme-install', 'readme-usage', 'lint-command', 'format-command'):
+            self.assertEqual(checks[name]['passed'], 0, name)
+
+    def test_git_target_is_independent_of_ambient_repository(self):
+        with tempfile.TemporaryDirectory(prefix='shipcheck-other-repo-') as sibling:
+            subprocess.run(['git', '-C', sibling, 'init', '-q'], check=True)
+            env = {**os.environ, 'GIT_DIR': str(Path(sibling) / '.git')}
+            data = json.loads(self.run_cli('scan', '--format', 'json', env=env))
+            check = next(item for item in data['checks'] if item['name'] == 'git-repo')
+            self.assertEqual(check['passed'], 0)
+
+    def test_markdown_treats_directory_labels_as_text(self):
+        self.repo = self.repo / 'name[review]<tag>&section'
+        self.repo.mkdir()
+        rendered = self.run_cli()
+        self.assertIn('name&#91;review&#93;&lt;tag&gt;&amp;section', rendered)
+        self.assertEqual(json.loads(self.run_cli('scan', '--format', 'json'))['dir'], str(self.repo))
+
     def test_fifo_is_not_read(self):
         os.mkfifo(self.repo / 'README.md')
         os.mkfifo(self.repo / 'VERSION')
@@ -120,6 +160,10 @@ class HardeningContract(unittest.TestCase):
 
     def test_empty_split_directory(self):
         self.assertIn('Missing value for --dir', self.run_cli('scan', '--dir', '', status=2))
+
+    def test_duplicate_option_is_rejected(self):
+        output = self.run_cli('gate', '--format=json', '--format', 'markdown', status=2)
+        self.assertIn('Duplicate option: --format', output)
 
     def test_equals_directory(self):
         target = self.repo / '=fixture'

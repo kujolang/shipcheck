@@ -1,4 +1,4 @@
-from src.display import display_text
+from src.display import display_text, markdown_text
 from src.git import git_output
 
 # src/report.kujo — Report generation for ShipCheck results.
@@ -14,7 +14,7 @@ export func report_markdown(results) {
 	print_lines([
 		"# ShipCheck Release-Readiness Report",
 		"",
-		"**Directory:** " + display_text(dir),
+		"**Directory:** " + markdown_text(dir),
 		"**Project type:** " + project_type,
 		""
 	])
@@ -95,7 +95,7 @@ export func generate_checklist(results) {
 	print_lines([
 		"# Release Checklist",
 		"",
-		"**Repository:** " + display_text(dir),
+		"**Repository:** " + markdown_text(dir),
 		""
 	])
 
@@ -134,7 +134,7 @@ export func generate_checklist(results) {
 	mut i := 0
 	while i < len(checks) {
 		c := checks[i]
-		print(status_icon(c) + " " + display_text(c["message"]))
+		print(status_icon(c) + " " + markdown_text(c["message"]))
 		i = i + 1
 	}
 }
@@ -143,13 +143,13 @@ export func generate_release_note(results, version) {
 	dir := results["dir"]
 
 	print_lines([
-		"# Release Notes — v" + display_text(version),
+		"# Release Notes — v" + markdown_text(version),
 		"",
-		"**Repository:** " + display_text(dir),
+		"**Repository:** " + markdown_text(dir),
 		""
 	])
 
-	output := git_output(dir, ["log", "--no-color", "--oneline", "-20"])
+	output := git_output(dir, ["log", "--no-color", "--no-show-signature", "--oneline", "-20"])
 	if output != "" {
 		print_lines(["## Recent Commits", "", "```"])
 		commit_lines := split(trim(output), "\n")
@@ -277,7 +277,7 @@ func print_checks(all_checks, names) {
 	while i < len(names) {
 		name := names[i]
 		c := find_check(all_checks, name)
-		print("- " + status_icon(c) + " " + display_text(c["message"]))
+		print("- " + status_icon(c) + " " + markdown_text(c["message"]))
 		i = i + 1
 	}
 }

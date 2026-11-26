@@ -1,8 +1,20 @@
+func git_environment() {
+	mut values := {"LC_ALL": "C"}
+	for name in ["PATH", "HOME", "USERPROFILE", "SystemRoot", "ComSpec", "PATHEXT", "TEMP", "TMP"] {
+		try {
+			value := env(name)
+			if value != "" { values[name] := value }
+		} except e {}
+	}
+	return values
+}
+
 # Bounded read-only Git inspection. Paths remain argv data on every platform.
 # Failed or incomplete Git output cannot establish readiness or release history.
 export func git_output(dir, arguments) {
 	try {
-		result := spawn_process(concat(["git", "-C", dir], arguments), {"timeout_ms": 5000, "max_output_bytes": 1048576})
+		prefix := ["git", "--no-optional-locks", "--no-pager", "--no-replace-objects", "-c", "core.fsmonitor=false", "-C", dir]
+		result := spawn_process(concat(prefix, arguments), {"inherit_env": false, "env": git_environment(), "timeout_ms": 5000, "max_output_bytes": 1048576})
 		if result.success && !result.timed_out && !result.stdout_truncated && !result.stderr_truncated {
 			return result.stdout
 		}

@@ -38,20 +38,22 @@ the repository maintainers with a minimal reproduction and expected impact.
 Human-readable report fields and CLI diagnostics escape C0/C1 terminal control
 characters as visible `\uXXXX` sequences. Git release-note output disables color
 and escapes controls in each commit line. JSON preserves the original strings
-using JSON escaping. Reports and commit subjects remain untrusted Markdown;
-render them with a viewer that disables raw HTML and review before publication.
+using JSON escaping. Markdown path labels and check values encode syntax characters from the input. Review reports and commit subjects before publication.
 
-The scanner requires a directory target and probes regular files before reading
-file signals, avoiding accidental reads from directories or FIFOs. Symlinks to
-regular files remain supported: this is not a filesystem confinement boundary.
-Filesystem probes and reads are not an atomic snapshot; concurrent repository
-changes can affect observations or cause a runtime I/O error. Retry only after
-stabilizing the target if a reproducible report is required.
+The scanner requires a directory target. Files and directories that resolve
+beneath that target can supply readiness signals. Reads of regular files use
+rooted descriptors and reject replacement links below the root. In-tree
+aliases resolve to their in-tree destination. Choose a stable target and parent
+directory when inspecting a changing repo.
 
-Metadata and source files are buffered by the runtime, with no ShipCheck-specific
-size quota. Root scans are shallow and release history is limited to 20 entries,
-with Git calls limited to five seconds and one MiB per output stream. Incomplete
-Git output cannot pass repository detection and is omitted from release drafts,
-but file size and directory breadth still determine resource use. Use external
-resource limits for adversarial repositories. No new cache, retry loop, mutable
-persistent state, or repository execution capability is introduced by scanning.
+Readme, Makefile, and manifest reads are capped at 1 MiB each, and VERSION
+reads at 256 bytes. Root filename heuristics examine the first 8,192 sorted
+entries. The source-based entry check considers at most 256 root scripts with
+a 256 KiB read limit per script. Directory listings use bounded pages. The
+runtime still enumerates names to select each page.
+
+Git calls use a five-second deadline and one MiB per output stream. They
+disable paging, optional locks, filesystem monitors, and object replacements.
+Repository-selection environment variables are excluded. Release notes read at
+most 20 commit subjects without signature display. Failed or incomplete Git
+output cannot establish readiness.

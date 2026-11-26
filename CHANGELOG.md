@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+- Confine readiness signals to the target and bound metadata, directory pages, and source probes.
+- Scope Git inspection to the selected repository, escape Markdown labels, and reject duplicate CLI options.
+- Distinguish install and usage words from unrelated substrings and exclude Make variable assignments from target detection.
+
 ## [1.0.1] - 2026-10-14
 
 - Parse TOML metadata with the runtime parser and require real script/entry fields.

@@ -16,3 +16,15 @@ export func display_text(value) {
 	}
 	return join(output, "")
 }
+
+export func markdown_text(value) {
+	mut text := display_text(value)
+	text = replace(text, "&", "&amp;")
+	text = replace(text, "<", "&lt;")
+	text = replace(text, ">", "&gt;")
+	text = replace(text, "[", "&#91;")
+	text = replace(text, "]", "&#93;")
+	text = replace(text, "`", "&#96;")
+	text = replace(text, "|", "&#124;")
+	return text
+}
